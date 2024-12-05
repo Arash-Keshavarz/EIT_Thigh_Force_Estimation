@@ -87,7 +87,7 @@ class EITMeasurementModule:
             widget.destroy()
 
         # Plot data
-        fig, ax = plt.subplots(figsize=(3, 3))
+        fig, ax = plt.subplots(figsize=(5, 5))
         ax.imshow(np.abs(data[0]), cmap="viridis")
         ax.set_title("EIT Measurement Results")
 
