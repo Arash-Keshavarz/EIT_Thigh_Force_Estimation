@@ -33,7 +33,9 @@ class IsokineticMeasurementModule:
         save_button = ctk.CTkButton(self.frame, text="Save", command=self.save_to_json)
         save_button.grid(row=5, column=0, columnspan=2, pady=20)
 
+
     def save_to_json(self):
+
         participant_name = self.participant_name_entry.get().strip()
         participant_leg = self.participant_leg_entry.get().strip()
         if participant_name and participant_leg:
@@ -44,3 +46,10 @@ class IsokineticMeasurementModule:
             print(f"Saved: {data}")
         else:
             print("Participant's Entries are empty")
+    
+    # Getter Methods
+    def get_participant_name(self):
+        return self.participant_name_entry.get().strip()
+
+    def get_participant_leg(self):
+        return self.participant_leg_entry.get().strip()
