@@ -1,5 +1,6 @@
 import customtkinter as ctk
 import json
+from CTkMessagebox import CTkMessagebox
 
 class IsokineticMeasurementModule:
     def __init__(self, parent):
@@ -64,10 +65,13 @@ class IsokineticMeasurementModule:
             
             with open("participant_data.json", "w") as json_file:
                 json.dump(data, json_file, indent=4)
-            print(f"Saved: {data}")
+            #print(f"Saved: {data}")
+            CTkMessagebox(title="Success", message=f"Participant's data has been successfully saved.", icon="check", option_1="OK")
+
         else:
-            print("Participant's Entries are empty")
-    
+            #print("Participant's Entries are empty")
+            CTkMessagebox(title="Error", message="Participant's Entries are empty", icon="cancel")
+ 
     # Getter Methods
     def get_participant_name(self):
         return self.participant_name_entry.get()
@@ -80,3 +84,4 @@ class IsokineticMeasurementModule:
     
     def get_participant_leg(self):
         return self.participant_leg_box.get()
+
