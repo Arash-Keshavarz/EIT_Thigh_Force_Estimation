@@ -1,3 +1,4 @@
+import numpy as np
 import customtkinter as ctk
 import json
 from CTkMessagebox import CTkMessagebox
@@ -45,10 +46,33 @@ class IsokineticMeasurementModule:
         self.participant_leg_box = ctk.CTkComboBox(self.frame, values=["right", "left"])
         self.participant_leg_box.grid(row=4, column=1, padx=5, pady=(10, 5), sticky="w")
 
+
+        # Shuffle the Force Levels
+        force_levels_label = ctk.CTkLabel(self.frame, text="Force Levels", font=("Arial", 14))
+        force_levels_label.grid(row=5, column=0, padx=5, pady=(10, 5), sticky="w")
+
+        force_levels_button = ctk.CTkButton(self.frame, text="Generate the Force Levels", command=self.shuffle_force_levels)
+        force_levels_button.grid(row=5, column=1, pady=20)
+
+        # Display the Shuffled Force Levels
+        self.forces_data_label = ctk.CTkLabel(self.frame, text= "idle", font=("Arial", 14))
+        self.forces_data_label.grid(row=6, column=0, columnspan=2, pady=20)
+
         # Save Button
         save_button = ctk.CTkButton(self.frame, text="Save", command=self.save_to_json)
-        save_button.grid(row=5, column=0, columnspan=2, pady=20)
+        save_button.grid(row=7, column=0, columnspan=2, pady=20)
+        
 
+
+    def shuffle_force_levels(self):
+        # Generate random force levels and show them in the GUI
+        force_levels = np.arange(10, 90, 10)
+        np.random.shuffle(force_levels)
+        repeated_force_levels = np.repeat(force_levels, 2)  # Repeat the force levels twice
+
+    
+        # Update the forces_data_label with the shuffled force levels
+        self.forces_data_label.configure(text=str(repeated_force_levels))
 
     def save_to_json(self):
 
@@ -72,6 +96,8 @@ class IsokineticMeasurementModule:
             #print("Participant's Entries are empty")
             CTkMessagebox(title="Error", message="Participant's Entries are empty", icon="cancel")
  
+
+
     # Getter Methods
     def get_participant_name(self):
         return self.participant_name_entry.get()
@@ -85,3 +111,5 @@ class IsokineticMeasurementModule:
     def get_participant_leg(self):
         return self.participant_leg_box.get()
 
+    def get_force_levels(self):
+        return self.forces_data_label.cget("text")
