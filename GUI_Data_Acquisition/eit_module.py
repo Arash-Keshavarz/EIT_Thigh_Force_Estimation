@@ -4,6 +4,7 @@ import numpy as np
 from sciopy import EIT_16_32_64_128, EitMeasurementSetup
 import customtkinter as ctk
 from CTkMessagebox import CTkMessagebox
+from datetime import datetime
 
 class EITMeasurementModule:
     def __init__(self, parent):
@@ -21,9 +22,11 @@ class EITMeasurementModule:
 
         self.create_parameter_inputs()
         
-         # Plot Area
-        self.plot_frame = ctk.CTkFrame(self.frame)
-        self.plot_frame.grid(row=len(self.entries) + 1, column=0, columnspan=2, sticky="nsew", padx=10, pady=10)
+         # Note Area
+        self.note_frame = ctk.CTkFrame(self.frame, width=400, height=100)
+        self.note_frame.grid(row=len(self.entries) + 1, column=0, columnspan=2, sticky="nsew", padx=10, pady=10)
+        self.note_entry = ctk.CTkEntry(self.note_frame, placeholder_text="Notes during the experiment")
+        self.note_entry.pack(padx=10, pady=10, fill="both", expand=True)
 
         # Start Button
         self.start_button = ctk.CTkButton(self.frame, text="Start EIT Measurement", command=self.start_measurement)
@@ -58,12 +61,12 @@ class EITMeasurementModule:
         except Exception as e:
             CTkMessagebox(title="Error", message=f"Error: {e}", icon="cancel")
 
-    def perform_measurement(self, params):
+    def perform_measurement(self, params, save_path="measurement_data.npz"):
         n_el = 16
         sciospec = EIT_16_32_64_128(n_el)
         sciospec.connect_device_HS()
         sciospec.SystemMessageCallback()
-        sciospec.GetDeviceInfo()        
+        #sciospec.GetDeviceInfo()        
         setup = EitMeasurementSetup(
             burst_count = int(params["Burst Count"]),
             n_el = n_el,
@@ -75,12 +78,18 @@ class EITMeasurementModule:
             adc_range = 1,
         )
         sciospec.SetMeasurementSetup(setup)
-        sciospec.GetMeasurementSetup(2)
-        sciospec.update_BurstCount(4)
+        #sciospec.GetMeasurementSetup(2)
         data = sciospec.StartStopMeasurement(return_as="pot_mat")
-        sciospec.SoftwareReset()
+        #sciospec.SoftwareReset()
+        
+        current_date = datetime.now().isoformat()
+        np.savez(save_path, data=data, datetime=current_date)
+
         return data
 
+
+
+    ## not used
     def plot_results(self, data):
         # Clear previous plots
         for widget in self.plot_frame.winfo_children():
@@ -94,3 +103,17 @@ class EITMeasurementModule:
         canvas = FigureCanvasTkAgg(fig, master=self.plot_frame)
         canvas.draw()
         canvas.get_tk_widget().pack(fill="both", expand=True)
+
+
+
+    ## Getter Methods
+    def get_parameters(self, parameter_name):
+
+        """Retrieves the value of a specified parameter."""
+
+        if parameter_name in self.entries:
+            return self.entries[parameter_name].get()
+        else:
+            raise ValueError(f"Parameter '{parameter_name}' not found.")
+    def get_note_entry_text(self):
+        return self.note_entry.get()
