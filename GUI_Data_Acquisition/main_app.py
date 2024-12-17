@@ -34,12 +34,23 @@ class MainApp(ctk.CTk):
 
 
 
+
     def generate_protocol(self):
         # Get data from IsokineticMeasurementModule and EITMeasurementModule
         participant_name = self.left_frame.get_participant_name()
         participant_age = self.left_frame.get_participant_age()
         participant_gender = self.left_frame.get_participant_gender()
         participant_leg = self.left_frame.get_participant_leg()
+
+        force_levels = self.left_frame.get_force_levels()
+
+        excitation_frequency = self.right_frame.get_parameters("Excitation Frequency (Hz)")
+        burst_count = self.right_frame.get_parameters("Burst Count")
+        amplitude = self.right_frame.get_parameters("Amplitude (mA)")
+        frame_rate = self.right_frame.get_parameters("Frame Rate (fps)")
+        injection_skip = self.right_frame.get_parameters("Injection Skip")
+
+        note_entries = self.right_frame.get_note_entry_text()
 
         if not participant_name or not participant_leg or not participant_gender or not participant_age:
             CTkMessagebox(title="Error", message="Please complete all participant details before generating the protocol.", icon="cancel")
@@ -58,28 +69,39 @@ class MainApp(ctk.CTk):
         )
 
         # Add participant details section
-        protocol.add_section(
-            "Participant Details",
-            f"Name: {participant_name}\n"
-            f"Age: {participant_age}\n"
-            f"Gender: {participant_gender}\n"
-            f"Leg: {participant_leg}"
+        participant_details = (
+        f"{'Name:':<5}{participant_name:<25}"
+        f"{'Age:':<5}{participant_age:<25}"
+        f"{'Gender:':<5}{participant_gender:<25}"
+        f"{'Leg:':<5}{participant_leg:<25}"
         )
+        protocol.add_section(
+            "Participant Details", participant_details)
 
 
         # Add Isokinetic Measurement section
+        isokinetic_setup = (f"Rotation Velocity: 30 °/s \n"
+                            f"Force Levels: {force_levels}")
         protocol.add_section(
-            "EIT Measurement Setup: ",
-            "..."
-        )
+            "IsoKinetic Dynommeter Measurement Setup: ", isokinetic_setup)
 
         # Add EIT Measurement section
+        eit_setup = (
+            f"Excitation Frequency: {excitation_frequency} Hz \n"
+            f"Burst Count: {burst_count} \n"
+            f"Amplitude: {amplitude} mA \n"
+            f"Frame Rate: {frame_rate} fps \n"
+            f"Injection Skip: {injection_skip}"
+        )
         protocol.add_section(
-            "Isokinetic Measurement Setup: ",
-            "..."
-        )        
+            "EIT Measurement Setup: ", eit_setup)   
+
+        protocol.add_section(
+            "Notes during the Experiment",
+            note_entries
+        )     
         # Generate the PDF file
-        pdf_filename = f"{protocol.experimenter}_protocol.pdf"
+        pdf_filename = f"Participant_{participant_name}_protocol.pdf"
         protocol.generate_pdf(pdf_filename)
         
         CTkMessagebox(title="Success", message=f"Protocol saved as {pdf_filename}.", icon="check", option_1="OK")
