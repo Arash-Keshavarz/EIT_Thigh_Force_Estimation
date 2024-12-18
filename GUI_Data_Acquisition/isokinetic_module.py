@@ -15,35 +15,37 @@ class IsokineticMeasurementModule:
         self.create_content()
 
     def create_content(self):
+        
         # Title Label
-        title_label = ctk.CTkLabel(self.frame, text="Isokinetic Measurement Config", font=("Arial", 18))
+        title_label = ctk.CTkLabel(self.frame, text="Isokinetic Measurement Config", font=("Arial", 18, "bold"))
         title_label.grid(row=0, column=0, columnspan=2, pady=10)
 
         # Participant's Name
         participant_name_label = ctk.CTkLabel(self.frame, text="Participant's Name", font=("Arial", 14))
         participant_name_label.grid(row=1, column=0, padx=5, pady=(10, 5), sticky="w")
 
-        self.participant_name_entry = ctk.CTkEntry(self.frame, width=200, placeholder_text="Enter Name")
+        self.participant_name_entry = ctk.CTkEntry(self.frame, width=150, placeholder_text="Enter Name")
         self.participant_name_entry.grid(row=1, column=1, padx=5, pady=(10, 5), sticky="w")
+        
         # Participant's Age
         participant_age_label = ctk.CTkLabel(self.frame, text="Participant's Age", font=("Arial", 14))
         participant_age_label.grid(row=2, column=0, padx=5, pady=(10, 5), sticky="w")
 
-        self.participant_age_entry = ctk.CTkEntry(self.frame, width=200, placeholder_text="Enter Age")
+        self.participant_age_entry = ctk.CTkEntry(self.frame, width=150, placeholder_text="Enter Age")
         self.participant_age_entry.grid(row=2, column=1, padx=5, pady=(10, 5), sticky="w")
         
         # Participant's Gender
         participant_gender_label = ctk.CTkLabel(self.frame, text="Participant's Gender", font=("Arial", 14))
         participant_gender_label.grid(row=3, column=0, padx=5, pady=(10, 5), sticky="w")
         
-        self.participant_gender_box = ctk.CTkComboBox(self.frame, values= ["male", "female"])
+        self.participant_gender_box = ctk.CTkComboBox(self.frame, width=150, values= ["male", "female"])
         self.participant_gender_box.grid(row=3, column=1, padx=5, pady=(10, 5), sticky="w")
         
         # Participant's Leg
         participant_leg_label = ctk.CTkLabel(self.frame, text="Participant's Leg", font=("Arial", 14))
         participant_leg_label.grid(row=4, column=0, padx=5, pady=(10, 5), sticky="w")
 
-        self.participant_leg_box = ctk.CTkComboBox(self.frame, values=["right", "left"])
+        self.participant_leg_box = ctk.CTkComboBox(self.frame, width=150, values=["right", "left"])
         self.participant_leg_box.grid(row=4, column=1, padx=5, pady=(10, 5), sticky="w")
 
 
@@ -51,8 +53,8 @@ class IsokineticMeasurementModule:
         force_levels_label = ctk.CTkLabel(self.frame, text="Force Levels", font=("Arial", 14))
         force_levels_label.grid(row=5, column=0, padx=5, pady=(10, 5), sticky="w")
 
-        force_levels_button = ctk.CTkButton(self.frame, text="Generate the Force Levels", command=self.shuffle_force_levels)
-        force_levels_button.grid(row=5, column=1, pady=20)
+        force_levels_button = ctk.CTkButton(self.frame,width=150, text="Generate the Force Levels", command=self.shuffle_force_levels)
+        force_levels_button.grid(row=5, column=1, padx=5, pady=(10, 5), sticky="w")
 
         # Display the Shuffled Force Levels
         self.forces_data_label = ctk.CTkLabel(self.frame, text= "idle", font=("Arial", 14))

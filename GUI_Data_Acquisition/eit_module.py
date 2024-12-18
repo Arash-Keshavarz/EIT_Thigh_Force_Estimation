@@ -15,7 +15,7 @@ class EITMeasurementModule:
         self.frame.grid_columnconfigure(1, weight=1)  # Entry column
         
         # Title Label
-        title_label = ctk.CTkLabel(self.frame, text="EIT Measurement Config", font=("Arial", 18))
+        title_label = ctk.CTkLabel(self.frame, text="EIT Measurement Config", font=("Arial", 18, "bold"))
         title_label.grid(row=0, column=0, columnspan=2, pady=10) 
 
         # Parameter Inputs
@@ -23,16 +23,22 @@ class EITMeasurementModule:
         self.create_parameter_inputs()
         
          # Note Area
-        self.note_frame = ctk.CTkFrame(self.frame, width=400, height=100)
-        self.note_frame.grid(row=len(self.entries) + 1, column=0, columnspan=2, sticky="nsew", padx=10, pady=10)
-        self.note_entry = ctk.CTkEntry(self.note_frame, placeholder_text="Notes during the experiment")
-        self.note_entry.pack(padx=10, pady=10, fill="both", expand=True)
+        #self.note_frame = ctk.CTkFrame(self.frame, width=400, height=400)
+        #self.note_frame.grid(row=len(self.entries) + 1, column=0, columnspan=2, sticky="nsew", padx=10, pady=10)
+        self.note_entry = ctk.CTkTextbox(self.frame, width = 400, height=100, corner_radius=5)
+        self.note_entry.insert("0.0", "Notes during the experiment")
+        self.note_entry.bind("<FocusIn>", lambda e: self.clear_placeholder())  # Clear placeholder on focus
+        #self.note_entry = ctk.CTkEntry(self.frame, width = 400, height=100, placeholder_text="Notes during the experiment")
+        self.note_entry.grid(row=len(self.entries) + 1, padx=10, pady=10, sticky="nsew", columnspan=2)
 
         # Start Button
         self.start_button = ctk.CTkButton(self.frame, text="Start EIT Measurement", command=self.start_measurement)
         self.start_button.grid(row=len(self.entries) + 2, column=0, columnspan=2, pady=20, sticky="n")
 
-    
+    def clear_placeholder(self):
+        if self.note_entry.get("0.0", "end").strip() == "Notes during the experiment":
+            self.note_entry.delete("0.0", "end")
+
     def create_parameter_inputs(self):
         params = {
             "Excitation Frequency (Hz)": "125_000",
@@ -45,9 +51,9 @@ class EITMeasurementModule:
         for i, (label, default) in enumerate(params.items()):
 
             lbl = ctk.CTkLabel(self.frame, text=label, font=("Arial", 14))
-            lbl.grid(row=i + 1, column=0, padx=10, pady=(10, 5), sticky="w")  
-            entry = ctk.CTkEntry(self.frame, placeholder_text=default)
-            entry.grid(row=i + 1, column=1, padx=10, pady=(10, 5), sticky="w")
+            lbl.grid(row=i + 1, column=0, padx=5, pady=(10, 5), sticky="w")  
+            entry = ctk.CTkEntry(self.frame, width=150, placeholder_text=default)
+            entry.grid(row=i + 1, column=1, padx=5, pady=(10, 5), sticky="w")
             self.entries[label] = entry
 
     def start_measurement(self):
@@ -116,4 +122,4 @@ class EITMeasurementModule:
         else:
             raise ValueError(f"Parameter '{parameter_name}' not found.")
     def get_note_entry_text(self):
-        return self.note_entry.get()
+        return self.note_entry.get("0.0", "end").strip()

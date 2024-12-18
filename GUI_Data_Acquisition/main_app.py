@@ -8,29 +8,31 @@ from CTkMessagebox import CTkMessagebox
 class MainApp(ctk.CTk):
     def __init__(self):
         super().__init__()
+
+        ## Initial settings    
         self.title("EIT/Isokinetic Measurement System")
         self.geometry("800x600")
-        self.grid_columnconfigure((0, 1), weight=1)  # Two columns with equal weight
-        #self.grid_rowconfigure((0, 1), weight=1)  
+        self.grid_columnconfigure(0, weight=1)
+        self.grid_columnconfigure(1, weight=1)
+        self.grid_rowconfigure(0, weight=1)  
 
         ctk.set_appearance_mode("dark")
-        ctk.set_default_color_theme("dark-blue")  # Set color theme
+        ctk.set_default_color_theme("dark-blue")  
 
 
         # Left Frame: IsokineticMeasurementModule
         self.left_frame = IsokineticMeasurementModule(self)
-        self.left_frame.frame.grid(row=0, column=0, padx=20, pady=(10, 0), sticky="new")  # Place in left column
-
+        self.left_frame.frame.grid(row=0, column=0, padx=10, pady=(10, 40), sticky="nsew")  # Place in left column
+        
         # Right Frame: EITMeasurementModule
         self.right_frame = EITMeasurementModule(self)
-        self.right_frame.frame.grid(row=0, column=1, padx=20, pady=(10, 0), sticky="new")  # Place in right column
+        self.right_frame.frame.grid(row=0, column=1, padx=10, pady=(10, 40), sticky="nsew")  # Place in right column
 
         ################################################################
         # Button to Generate The Protocol
 
         self.protocol_button = ctk.CTkButton(self, text="Generate Protocol", command=self.generate_protocol)
-        self.protocol_button.grid(row=1, column=0, padx=20,pady=(0,40), sticky="new")
-        # needed to be fixed #
+        self.protocol_button.grid(row=1, column=0, padx=20, pady=20 ,columnspan=2, sticky="nsew")
 
 
 
@@ -59,7 +61,7 @@ class MainApp(ctk.CTk):
         # Create the Protocol
         protocol = ExperimentProtocol(
             title="Experiment Protocol: Force/EIT Measurement"
-            , experimenter= "Arash"
+            , experimenter= "University of Rostock"
             )  # Edit experimenter
         
         # Add an introductory section
