@@ -5,6 +5,7 @@ from sciopy import EIT_16_32_64_128, EitMeasurementSetup
 import customtkinter as ctk
 from CTkMessagebox import CTkMessagebox
 from datetime import datetime
+import os
 
 class EITMeasurementModule:
     def __init__(self, parent):
@@ -46,6 +47,7 @@ class EITMeasurementModule:
             "Amplitude (mA)": "0.01",
             "Frame Rate (fps)": "3",
             "Injection Skip": "n_el // 2",
+            "Force Level": "[20-80]"
         }
         self.entries = {}
         for i, (label, default) in enumerate(params.items()):
@@ -60,39 +62,52 @@ class EITMeasurementModule:
         # Extract Parameters
         try:
             params = {key: float(entry.get()) for key, entry in self.entries.items()}
-            data = self.perform_measurement(params)
-            self.plot_results(data)
+            self.perform_measurement(params)
+            #self.plot_results(data)
             CTkMessagebox(title="Success", message=f"Measurement complete.", icon="check", option_1="OK")
 
         except Exception as e:
             CTkMessagebox(title="Error", message=f"Error: {e}", icon="cancel")
 
-    def perform_measurement(self, params, save_path="measurement_data.npz"):
+
+    def perform_measurement(self, params, save_dir="measurements"):
+        # Ensure the save directory exists
+        os.makedirs(save_dir, exist_ok=True)
+
+        # Determine the next available filename
+        files = [f for f in os.listdir(save_dir) if f.startswith("sample_") and f.endswith(".npz")]
+        if files:
+            max_index = max(int(f.split("_")[1].split(".")[0]) for f in files)
+        else:
+            max_index = -1
+
+        next_index = max_index + 1
+        save_path = os.path.join(save_dir, f"sample_{next_index:05d}.npz")
+
+        # Perform the measurement
         n_el = 16
         sciospec = EIT_16_32_64_128(n_el)
         sciospec.connect_device_HS()
         sciospec.SystemMessageCallback()
-        #sciospec.GetDeviceInfo()        
+
         setup = EitMeasurementSetup(
-            burst_count = int(params["Burst Count"]),
-            n_el = n_el,
-            exc_freq = params["Excitation Frequency (Hz)"],
-            framerate = int(params["Frame Rate (fps)"]),
-            amplitude = params["Amplitude (mA)"],
-            inj_skip = n_el // 2,
-            gain = 1,
-            adc_range = 1,
+            burst_count=int(params["Burst Count"]),
+            n_el=n_el,
+            exc_freq=params["Excitation Frequency (Hz)"],
+            framerate=int(params["Frame Rate (fps)"]),
+            amplitude=params["Amplitude (mA)"],
+            inj_skip=n_el // 2,
+            gain=1,
+            adc_range=1,
         )
         sciospec.SetMeasurementSetup(setup)
-        #sciospec.GetMeasurementSetup(2)
         data = sciospec.StartStopMeasurement(return_as="pot_mat")
-        #sciospec.SoftwareReset()
-        
-        current_date = datetime.now().isoformat()
-        np.savez(save_path, data=data, datetime=current_date)
+
+        # Save the data
+        current_date = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        np.savez(save_path, data=data, datetime=current_date, force_level=params["Force Level"])
 
         return data
-
 
 
     ## not used
