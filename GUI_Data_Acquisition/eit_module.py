@@ -6,6 +6,7 @@ import customtkinter as ctk
 from CTkMessagebox import CTkMessagebox
 from datetime import datetime
 import os
+import time
 
 class EITMeasurementModule:
     def __init__(self, parent):
@@ -101,11 +102,15 @@ class EITMeasurementModule:
             adc_range=1,
         )
         sciospec.SetMeasurementSetup(setup)
+
+        # record start time
+        start_timestamp = time.time()
         data = sciospec.StartStopMeasurement(return_as="pot_mat")
+        # record end time
+        end_timestamp = time.time()
 
         # Save the data
-        current_date = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        np.savez(save_path, data=data, datetime=current_date, force_level=params["Force Level"])
+        np.savez(save_path, data=data, start_timestamp=start_timestamp, end_timestamp= end_timestamp, force_level=params["Force Level"])
 
         return data
 
