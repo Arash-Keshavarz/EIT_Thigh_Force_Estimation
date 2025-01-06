@@ -2,6 +2,9 @@ import numpy as np
 import customtkinter as ctk
 import json
 from CTkMessagebox import CTkMessagebox
+from NI_module import ContinuousDAQ
+import threading
+
 
 class IsokineticMeasurementModule:
     def __init__(self, parent):
@@ -10,6 +13,11 @@ class IsokineticMeasurementModule:
         self.frame.grid(row=0, column=0, padx=20, pady=20)
         self.frame.grid_columnconfigure(0, weight=0)  # Label column
         self.frame.grid_columnconfigure(1, weight=1)  # Entry column
+
+        
+        # Initialize DAQ attributes
+        self.daq = None
+        self.acquisition_thread = None
 
         # Create content for IsokineticMeasurementModule
         self.create_content()
@@ -21,7 +29,7 @@ class IsokineticMeasurementModule:
         title_label.grid(row=0, column=0, columnspan=2, pady=10)
 
         # Participant's Name
-        participant_name_label = ctk.CTkLabel(self.frame, text="Participant's Name", font=("Arial", 14))
+        participant_name_label = ctk.CTkLabel(self.frame, text="Participant's Number", font=("Arial", 14))
         participant_name_label.grid(row=1, column=0, padx=5, pady=(10, 5), sticky="w")
 
         self.participant_name_entry = ctk.CTkEntry(self.frame, width=150, placeholder_text="Enter Name")
@@ -60,10 +68,12 @@ class IsokineticMeasurementModule:
         self.forces_data_label = ctk.CTkLabel(self.frame, text= "idle", font=("Arial", 14))
         self.forces_data_label.grid(row=6, column=0, columnspan=2, pady=20)
 
-        # Save Button
-        save_button = ctk.CTkButton(self.frame, text="Save", command=self.save_to_json)
+        # Start NI measurement Button
+        save_button = ctk.CTkButton(self.frame, text="Start Measurement", command=self.NI_start_measurement)
         save_button.grid(row=7, column=0, columnspan=2, pady=20)
-        
+        # Stop NI measurement Button
+        save_button = ctk.CTkButton(self.frame, text="Stop Measurement", command=self.NI_stop_measurement)
+        save_button.grid(row=8, column=0, columnspan=2, pady=20)        
 
 
     def shuffle_force_levels(self):
@@ -76,28 +86,44 @@ class IsokineticMeasurementModule:
         # Update the forces_data_label with the shuffled force levels
         self.forces_data_label.configure(text=str(repeated_force_levels))
 
-    def save_to_json(self):
+    def NI_start_measurement(self):
+            """
+            Start the measurement process using ContinuousDAQ.
+            """
+            if self.daq is not None:
+                CTkMessagebox.show_warning("Measurement Warning", "Measurement already running.")
+                return
 
-        participant_name = self.participant_name_entry.get()
-        participant_age = self.participant_age_entry.get()
-        participant_gender = self.participant_gender_box.get()
-        participant_leg = self.participant_leg_box.get()
-        if participant_name and participant_leg and participant_age and participant_gender:
-            # Save the Participants information to JSON file
-            data = {"Participant_Name": participant_name,
-                    "Participant_Age": participant_age,
-                    "Participant_Gender": participant_gender,
-                    "Participant_Leg": participant_leg}
-            
-            with open("participant_data.json", "w") as json_file:
-                json.dump(data, json_file, indent=4)
-            #print(f"Saved: {data}")
-            CTkMessagebox(title="Success", message=f"Participant's data has been successfully saved.", icon="check", option_1="OK")
+            #################### Adjust the parameters if neeeded ########################
+            sampling_rate = 500  # Hz
+            chunk_size = 500  # Number of samples per read
+            output_file = f"data_{self.get_participant_name()}.npz"
 
-        else:
-            #print("Participant's Entries are empty")
-            CTkMessagebox(title="Error", message="Participant's Entries are empty", icon="cancel")
- 
+            self.daq = ContinuousDAQ(sampling_rate, chunk_size, output_file)
+
+            # Run DAQ in a separate thread to keep GUI responsive
+            self.acquisition_thread = threading.Thread(target=self.daq.start_measurement, daemon=True)
+            self.acquisition_thread.start()
+
+            CTkMessagebox.show_info("Measurement Info", "Measurement started successfully.")
+
+    def NI_stop_measurement(self):
+        """
+        Stop the measurement process.
+        """
+        if self.daq is None:
+            CTkMessagebox.show_warning("Measurement Warning", "No measurement in progress.")
+            return
+
+        # Stop the DAQ acquisition
+        self.daq.stop_measurement()
+
+        # Reset DAQ instance and thread
+        self.daq = None
+        self.acquisition_thread = None
+
+        CTkMessagebox.show_info("Measurement Info", "Measurement stopped and data saved.")
+  
 
 
     # Getter Methods
