@@ -7,7 +7,7 @@ class ExperimentProtocol:
     def __init__(self, title, experimenter, date=None):
         self.title = title
         self.experimenter = experimenter
-        self.date = date if date else datetime.now().strftime("%Y-%m-%d")
+        self.date = date if date else datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         self.sections = []
 
     def add_section(self, heading, content):
