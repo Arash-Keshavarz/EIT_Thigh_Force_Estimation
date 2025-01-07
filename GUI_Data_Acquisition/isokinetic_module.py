@@ -3,8 +3,9 @@ import customtkinter as ctk
 import json
 from CTkMessagebox import CTkMessagebox
 from NI_module import ContinuousDAQ
+from utils import create_participant_directory
 import threading
-
+import os
 
 class IsokineticMeasurementModule:
     def __init__(self, parent):
@@ -93,26 +94,34 @@ class IsokineticMeasurementModule:
             if self.daq is not None:
                 CTkMessagebox.show_warning("Measurement Warning", "Measurement already running.")
                 return
+            
+            participant_name = self.get_participant_name()
+
+            if not participant_name:
+                CTkMessagebox(title="Error", message="Please enter a participant name", icon="cancel")
+
+            participant_dir = create_participant_directory(participant_name)
+            ni_data_filename = os.path.join(participant_dir, f"{participant_name}_NI_data.npz")
 
             #################### Adjust the parameters if neeeded ########################
             sampling_rate = 500  # Hz
             chunk_size = 500  # Number of samples per read
-            output_file = f"data_{self.get_participant_name()}.npz"
 
-            self.daq = ContinuousDAQ(sampling_rate, chunk_size, output_file)
+            self.daq = ContinuousDAQ(sampling_rate, chunk_size, ni_data_filename)
 
             # Run DAQ in a separate thread to keep GUI responsive
             self.acquisition_thread = threading.Thread(target=self.daq.start_measurement, daemon=True)
             self.acquisition_thread.start()
 
-            CTkMessagebox.show_info("Measurement Info", "Measurement started successfully.")
+            CTkMessagebox(title="Measurement Info", message="Measurement started successfully.", icon="info")
 
     def NI_stop_measurement(self):
         """
         Stop the measurement process.
         """
         if self.daq is None:
-            CTkMessagebox.show_warning("Measurement Warning", "No measurement in progress.")
+            
+            CTkMessagebox(title="Measurement Warning", message="No measurement in progress", icon="warning")
             return
 
         # Stop the DAQ acquisition
@@ -122,8 +131,7 @@ class IsokineticMeasurementModule:
         self.daq = None
         self.acquisition_thread = None
 
-        CTkMessagebox.show_info("Measurement Info", "Measurement stopped and data saved.")
-  
+        CTkMessagebox(title="Measurement Info", message="Measurement stopped and data saved.", icon="info")  
 
 
     # Getter Methods
