@@ -4,6 +4,8 @@ from eit_module import EITMeasurementModule
 from isokinetic_module import IsokineticMeasurementModule
 from protocol_generate import ExperimentProtocol
 from CTkMessagebox import CTkMessagebox
+import os
+from utils import create_participant_directory
 
 class MainApp(ctk.CTk):
     def __init__(self):
@@ -40,6 +42,10 @@ class MainApp(ctk.CTk):
     def generate_protocol(self):
         # Get data from IsokineticMeasurementModule and EITMeasurementModule
         participant_name = self.left_frame.get_participant_name()
+
+        # create participant directory
+        participant_dir = create_participant_directory(participant_name)
+
         participant_age = self.left_frame.get_participant_age()
         participant_gender = self.left_frame.get_participant_gender()
         participant_leg = self.left_frame.get_participant_leg()
@@ -72,7 +78,7 @@ class MainApp(ctk.CTk):
 
         # Add participant details section
         participant_details = (
-        f"{'Name:':<5}{participant_name:<25}"
+        f"{'Participant Number: ':<5}{participant_name:<25}"
         f"{'Age:':<5}{participant_age:<25}"
         f"{'Gender:':<5}{participant_gender:<25}"
         f"{'Leg:':<5}{participant_leg:<25}"
@@ -103,12 +109,13 @@ class MainApp(ctk.CTk):
             note_entries
         )     
         # Generate the PDF file
-        pdf_filename = f"Participant_{participant_name}_protocol.pdf"
+        pdf_filename = os.path.join(participant_dir, f"Participant_{participant_name}_protocol.pdf")
         protocol.generate_pdf(pdf_filename)
         
         CTkMessagebox(title="Success", message=f"Protocol saved as {pdf_filename}.", icon="check", option_1="OK")
 
 
+    
 if __name__ == "__main__":
     app = MainApp()
     app.mainloop()
