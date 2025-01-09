@@ -44,10 +44,10 @@ class EITMeasurementModule:
     def create_parameter_inputs(self):
         params = {
             "Excitation Frequency (Hz)": "125_000",
-            "Burst Count": "1",
+            "Burst Count": "0",
             "Amplitude (mA)": "0.01",
             "Frame Rate (fps)": "3",
-            "Injection Skip": "n_el // 2",
+            "Injection Skip": "5",
             "Force Level": "[20-80]"
         }
         self.entries = {}

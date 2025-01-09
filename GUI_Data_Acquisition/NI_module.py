@@ -35,23 +35,14 @@ class ContinuousDAQ:
                 self.sampling_rate, sample_mode=AcquisitionType.CONTINUOUS
             )
 
-            start_time = time.perf_counter()
+            start_time = time.time()
             self.timestamps_start.append(start_time)
             print("Acquisition started.")
 
-            sample_index = 0
             while self.acquisition_running:
                 samples = task.read(number_of_samples_per_channel=self.chunk_size)
                 current_time = time.perf_counter()
-
-                # Calculate timestamps for each sample
-                timestamps = [
-                    start_time + (sample_index + i) / self.sampling_rate
-                    for i in range(self.chunk_size)
-                ]
-                sample_index += self.chunk_size
-
-                self.timestamps_current.extend(timestamps)
+                self.timestamps_current.append(current_time)
 
                 # Extend channel data
                 if len(self.channels) > 1:

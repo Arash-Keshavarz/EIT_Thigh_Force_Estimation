@@ -92,7 +92,7 @@ class IsokineticMeasurementModule:
             Start the measurement process using ContinuousDAQ.
             """
             if self.daq is not None:
-                CTkMessagebox.show_warning("Measurement Warning", "Measurement already running.")
+                CTkMessagebox(title="Measurement Warning", message="Measurement already running.", icon="warning")
                 return
             
             participant_name = self.get_participant_name()
@@ -101,7 +101,15 @@ class IsokineticMeasurementModule:
                 CTkMessagebox(title="Error", message="Please enter a participant name", icon="cancel")
 
             participant_dir = create_participant_directory(participant_name)
-            ni_data_filename = os.path.join(participant_dir, f"{participant_name}_NI_data.npz")
+            raw_iso_dir = os.path.join(participant_dir, "Isokinetic_raw")  # Subdirectory for isokinetic raw data
+            raw_eit_dir = os.path.join(participant_dir, "EIT_raw")  # Subdirectory for eit raw data
+
+            if not os.path.exists(raw_iso_dir):
+                os.makedirs(raw_iso_dir, exist_ok=True)  
+            if not os.path.exists(raw_eit_dir):
+                os.makedirs(raw_eit_dir, exist_ok=True)
+                
+            ni_data_filename = os.path.join(raw_iso_dir, f"Participant_{participant_name}_NI_data")
 
             #################### Adjust the parameters if neeeded ########################
             sampling_rate = 500  # Hz
