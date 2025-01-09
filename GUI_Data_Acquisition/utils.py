@@ -12,7 +12,7 @@ def create_participant_directory(participant_name):
         os.makedirs(base_dir)
     
     # Define the participant's directory path
-    participant_dir = os.path.join(base_dir, participant_name)
+    participant_dir = os.path.join(base_dir, f"Participant_{participant_name}")
     
     if not os.path.exists(participant_dir):
         os.makedirs(participant_dir)
