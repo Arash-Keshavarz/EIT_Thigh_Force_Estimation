@@ -6,6 +6,7 @@ from NI_module import ContinuousDAQ
 from utils import create_participant_directory
 import threading
 import os
+import datetime
 
 class IsokineticMeasurementModule:
     def __init__(self, parent):
@@ -108,12 +109,13 @@ class IsokineticMeasurementModule:
                 os.makedirs(raw_iso_dir, exist_ok=True)  
             if not os.path.exists(raw_eit_dir):
                 os.makedirs(raw_eit_dir, exist_ok=True)
-                
-            ni_data_filename = os.path.join(raw_iso_dir, f"Participant_{participant_name}_NI_data")
+
+            human_time = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+            ni_data_filename = os.path.join(raw_iso_dir, f"Participant_{participant_name}_NI_data_{human_time}")
 
             #################### Adjust the parameters if neeeded ########################
-            sampling_rate = 500  # Hz
-            chunk_size = 500  # Number of samples per read
+            sampling_rate = 100  # Hz
+            chunk_size = sampling_rate  # Number of samples per read
 
             self.daq = ContinuousDAQ(sampling_rate, chunk_size, ni_data_filename)
 

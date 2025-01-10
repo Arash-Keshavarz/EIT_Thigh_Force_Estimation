@@ -21,6 +21,7 @@ class ContinuousDAQ:
         self.timestamps_start = []
         self.timestamps_current = []
         self.acquisition_running = False
+        self.save_counter = 0 # initialize a counter
 
     def start_measurement(self):
         """
@@ -50,7 +51,7 @@ class ContinuousDAQ:
                         self.all_data[i].extend(channel_data)
                 else:
                     self.all_data[0].extend(samples)
-
+                self._save_data()
                 # Debugging: Print current time
                 print(
                     "Current Time:",
@@ -69,13 +70,14 @@ class ContinuousDAQ:
 
     def _save_data(self):
         """
-        Save the acquired data and timestamps to a file.
+             Save the acquired data and timestamps to a unique file using a counter.
         """
+        unique_output_file = f"{self.output_file}_{self.save_counter}.npz"
+        self.save_counter += 1
         data_array = np.array([np.array(channel_data) for channel_data in self.all_data])
         np.savez(
-            self.output_file,
+            unique_output_file,
             data=data_array,
-            channels=self.channels,
             timestamps_start=self.timestamps_start,
             timestamps_current=self.timestamps_current,
             sampling_rate=self.sampling_rate,
