@@ -42,7 +42,7 @@ class ContinuousDAQ:
 
             while self.acquisition_running:
                 samples = task.read(number_of_samples_per_channel=self.chunk_size)
-                current_time = time.perf_counter()
+                current_time = time.time()
                 self.timestamps_current.append(current_time)
 
                 # Extend channel data

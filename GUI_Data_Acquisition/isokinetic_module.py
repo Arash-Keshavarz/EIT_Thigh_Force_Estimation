@@ -7,10 +7,12 @@ from utils import create_participant_directory
 import threading
 import os
 import datetime
+import time
 
 class IsokineticMeasurementModule:
     def __init__(self, parent):
-        
+
+
         self.frame = ctk.CTkFrame(parent)
         self.frame.grid(row=0, column=0, padx=20, pady=20)
         self.frame.grid_columnconfigure(0, weight=0)  # Label column
@@ -77,10 +79,10 @@ class IsokineticMeasurementModule:
         save_button = ctk.CTkButton(self.frame, text="Stop Measurement", command=self.NI_stop_measurement)
         save_button.grid(row=8, column=0, columnspan=2, pady=20)        
 
-
+    
     def shuffle_force_levels(self):
         # Generate random force levels and show them in the GUI
-        force_levels = np.arange(10, 90, 10)
+        force_levels = np.arange(20, 90, 10)
         np.random.shuffle(force_levels)
         repeated_force_levels = np.repeat(force_levels, 2)  # Repeat the force levels twice
 
