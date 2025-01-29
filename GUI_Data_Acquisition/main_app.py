@@ -14,6 +14,7 @@ class MainApp(ctk.CTk):
         ## Initial settings    
         self.title("EIT/Isokinetic Measurement System")
         self.geometry("800x600")
+        self.iconbitmap('asset/logo.ico')
         self.grid_columnconfigure(0, weight=1)
         self.grid_columnconfigure(1, weight=1)
         self.grid_rowconfigure(0, weight=1)  
@@ -41,15 +42,10 @@ class MainApp(ctk.CTk):
 
     def generate_protocol(self):
         # Get data from IsokineticMeasurementModule and EITMeasurementModule
-        participant_name = self.left_frame.get_participant_name()
-
-        # create participant directory
-        participant_dir = create_participant_directory(participant_name)
-
+        participant_num = self.left_frame.get_participant_number()
         participant_age = self.left_frame.get_participant_age()
         participant_gender = self.left_frame.get_participant_gender()
         participant_leg = self.left_frame.get_participant_leg()
-
         force_levels = self.left_frame.get_force_levels()
 
         excitation_frequency = self.right_frame.get_parameters("Excitation Frequency (Hz)")
@@ -57,13 +53,41 @@ class MainApp(ctk.CTk):
         amplitude = self.right_frame.get_parameters("Amplitude (mA)")
         frame_rate = self.right_frame.get_parameters("Frame Rate (fps)")
         injection_skip = self.right_frame.get_parameters("Injection Skip")
-
         note_entries = self.right_frame.get_note_entry_text()
 
-        if not participant_name or not participant_leg or not participant_gender or not participant_age:
+        if not participant_num or not participant_leg or not participant_gender or not participant_age:
             CTkMessagebox(title="Error", message="Please complete all participant details before generating the protocol.", icon="cancel")
             return
         
+        # create participant directory
+        participant_dir = create_participant_directory(participant_num)
+
+        # create a directory to store data
+        protocol_data = {
+            "participant" : {
+                "Number": participant_num,
+                "age" : participant_age,
+                "gender": participant_gender,
+                "leg": participant_leg
+            },
+            "isokinetic_measurement":{
+                "rotations_velocity":"30 °/s",
+                "force_levels": force_levels
+            },
+            "eit_measurement":{
+                "excitation_frequency": 125_000, ## modify if needed
+                "burst_count": 0,
+                "amplitude": "1 mA",
+                "frame_rate": 40,
+                "n_el": 16,
+                "injection_skip": 5
+            },
+            "notes": note_entries
+        }
+
+        # save Json file
+        self.save_json(participant_dir, participant_num, protocol_data
+                       )
         # Create the Protocol
         protocol = ExperimentProtocol(
             title="Experiment Protocol: Force/EIT Measurement"
@@ -78,7 +102,7 @@ class MainApp(ctk.CTk):
 
         # Add participant details section
         participant_details = (
-        f"{'Participant Number: ':<5}{participant_name:<25}"
+        f"{'Participant Number: ':<5}{participant_num:<25}"
         f"{'Age:':<5}{participant_age:<25}"
         f"{'Gender:':<5}{participant_gender:<25}"
         f"{'Leg:':<5}{participant_leg:<25}"
@@ -109,11 +133,16 @@ class MainApp(ctk.CTk):
             note_entries
         )     
         # Generate the PDF file
-        pdf_filename = os.path.join(participant_dir, f"Participant_{participant_name}_protocol.pdf")
+        pdf_filename = os.path.join(participant_dir, f"Participant_{participant_num}_protocol.pdf")
         protocol.generate_pdf(pdf_filename)
         
         CTkMessagebox(title="Success", message=f"Protocol saved as {pdf_filename}.", icon="check", option_1="OK")
 
+    def save_json(self, participant_dir, participant_num, data):
+        json_filename = os.path.join(participant_dir, f"Participant_{participant_num}_protocol.json")
+
+        with open(json_filename, "w") as json_file:
+            json.dump(data, json_file, indent=4)
 
     
 if __name__ == "__main__":
