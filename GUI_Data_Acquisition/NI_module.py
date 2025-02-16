@@ -1,11 +1,18 @@
-import nidaqmx
-from nidaqmx.constants import AcquisitionType
-import numpy as np
-import customtkinter as ctk
-from CTkMessagebox import CTkMessagebox
-import time
+"""
+NI_module.py
+
+This module contains the ContinuousDAQ class which handles data acquisition using NI hardware.
+"""
+
 import datetime
 import logging
+import time
+from typing import List
+
+import nidaqmx
+import numpy as np
+from nidaqmx.constants import AcquisitionType
+
 
 # Configure logging
 logging.basicConfig(
@@ -16,6 +23,9 @@ logging.basicConfig(
 
 
 class ContinuousDAQ:
+    """
+    Class to handle continuous data acquisition using NI hardware.
+    """
     def __init__(self, sampling_rate, chunk_size, output_file):
         """
         Initialize the DAQ parameters.
@@ -25,7 +35,7 @@ class ContinuousDAQ:
             chunk_size (int): The number of samples to read in each chunk.
             output_file (str): Base name of the output file for saving data.
         """
-        self.channels = ["Dev1/ai0", "Dev1/ai1", "Dev1/ai2"]
+        self.channels: List[str] = ["Dev1/ai0", "Dev1/ai1", "Dev1/ai2"]
         self.sampling_rate = sampling_rate
         self.chunk_size = chunk_size
         self.output_file = output_file
@@ -33,7 +43,8 @@ class ContinuousDAQ:
         self.timestamps_start = []
         self.timestamps_current = []
         self.acquisition_running = False
-        self.save_counter = 0  # saving  sample number
+        self.save_counter = 0  # Counter for saved sample files
+        
 
     def start_measurement(self):
         """

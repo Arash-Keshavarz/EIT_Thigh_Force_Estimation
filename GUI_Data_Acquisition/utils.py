@@ -25,7 +25,7 @@ def create_participant_directory(participant_num: str) -> tuple[str, str]:
     for sub_dir in ["", "eit_raw", "iso_raw"]:
         os.makedirs(os.path.join(participant_dir, sub_dir), exist_ok=True)
     
-    return os.path.join(participant_dir, "eit_raw"), os.path.join(participant_dir, "iso_raw")
+    return os.path.join(participant_dir, "eit_raw"), os.path.join(participant_dir, "iso_raw"), participant_dir
 
 
 
