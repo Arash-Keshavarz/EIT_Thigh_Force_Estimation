@@ -1,131 +1,179 @@
+"""
+post_processing.py
+------------------
+
+This module provides functions and classes to post‐process IsoForce and IsoForcePy data.
+It includes functions for filtering, scaling, edge detection, and segment extraction,
+as well as classes to wrap these operations for specific data formats.
+"""
+
+import os
+import re
+from datetime import datetime, timedelta
+from typing import Any, List, Tuple, Union, Dict, Optional
+
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
-import os
-import glob
 from scipy.signal import butter, filtfilt, find_peaks
-import re
-from datetime import datetime, timedelta, timezone
 
-
-def lowpass_filter(data, cutoff=2, fs=100, order=4):
-    """ Applying the low pass(LP) filter
-
-    Args:
-        data (_type_): input signal
-        cutoff (int, optional):the cut off frequency. Defaults to 2.
-        fs (int, optional): the sampling rate. Defaults to 100.
-        order (int, optional): the order of filter. Defaults to 4.
-
+def lowpass_filter(
+    data: Union[np.ndarray, List[float]], cutoff: float = 2.0, fs: float = 100.0, order: int = 4
+) -> np.ndarray:
     """
-    
+    Apply a low-pass Butterworth filter to the input signal.
+
+    Parameters
+    ----------
+    data : array-like
+        The input signal.
+    cutoff : float, optional
+        The cutoff frequency in Hz (default is 2.0).
+    fs : float, optional
+        The sampling rate in Hz (default is 100.0).
+    order : int, optional
+        The order of the filter (default is 4).
+
+    Returns
+    -------
+    np.ndarray
+        The filtered signal.
+    """
     nyquist = 0.5 * fs
     normal_cutoff = cutoff / nyquist
     b, a = butter(order, normal_cutoff, btype="low", analog=False)
-    filtered_signal = filtfilt(b, a, data)
+    filtered_signal = filtfilt(b, a, np.asarray(data))
     return filtered_signal
 
-
-def scale_to_range(values, new_min=0, new_max=1):
-    """Scales input value(s) from their original range to a new specified range [new_min, new_max].
-
-    Args:
-        values (float, list, or tuple): Input value(s) to scale. Can be a single number, list, or tuple.
-        new_min (float): The lower bound of the new range (default is 0).
-        new_max (float): The upper bound of the new range (default is 1).
-    
-
-    Returns:
-        float, list, or tuple: Scaled value(s) within the specified range. The return type matches the input type.
+def scale_to_range(
+    values: Union[np.ndarray, List[float], Tuple[float, ...]], new_min: float = 0.0, new_max: float = 1.0
+) -> Union[np.ndarray, List[float], Tuple[float, ...]]:
     """
-    
-    old_min = np.min(values)
-    old_max = np.max(values)
+    Scale input value(s) from their original range to a new specified range [new_min, new_max].
 
-    def scale(value):
-        return new_min + (value - old_min) * (new_max - new_min) / (old_max - old_min)
+    Parameters
+    ----------
+    values : float, list, tuple, or np.ndarray
+        Input value(s) to scale.
+    new_min : float, optional
+        The lower bound of the new range (default is 0.0).
+    new_max : float, optional
+        The upper bound of the new range (default is 1.0).
 
-    if isinstance(values, (list, tuple)):
-        return type(values)(scale(value) for value in values)
+    Returns
+    -------
+    float, list, tuple, or np.ndarray
+        Scaled value(s) within the specified range.
+        The return type matches the input type.
+    """
+    values_arr = np.asarray(values)
+    old_min = np.min(values_arr)
+    old_max = np.max(values_arr)
+
+    # Avoid division by zero if old_max equals old_min
+    if old_max == old_min:
+        scaled = np.full_like(values_arr, new_min)
     else:
-        return scale(values)
-    
-def edge_detection(signal, mode="rising", threshold=1):
+        scaled = new_min + (values_arr - old_min) * (new_max - new_min) / (old_max - old_min)
+
+    # Return the same type as the input if possible.
+    if isinstance(values, (list, tuple)):
+        return type(values)(scaled.tolist())
+    return scaled
+
+def edge_detection(signal: Union[np.ndarray, List[float]], mode: str = "rising", threshold: float = 1.0) -> np.ndarray:
     """
-    Detects edges (rising or falling) in a signal based on a specified threshold.
+    Detect edges (rising or falling) in a signal based on a specified threshold.
 
-    Parameters:
-        signal (array-like): The input signal,
-        mode (str): The type of edge to detect. 
-                    - "rising": Detects rising edges where the signal difference equals the threshold.
-                    - "falling": Detects falling edges where the signal difference equals the negative threshold.
-                    Default is "rising".
-        threshold (int or float): The difference value that defines an edge. Default is 1.
+    Parameters
+    ----------
+    signal : array-like
+        The input signal.
+    mode : {"rising", "falling"}, optional
+        The type of edge to detect. For "rising", detects edges where the difference equals threshold;
+        for "falling", where the difference equals -threshold (default is "rising").
+    threshold : float, optional
+        The difference value that defines an edge (default is 1.0).
 
-    Returns:
-        numpy.ndarray: The indices of the detected edges in the signal.
-
+    Returns
+    -------
+    np.ndarray
+        The indices of the detected edges in the signal.
     """
-    
     signal = np.asarray(signal)
     diff = np.diff(signal)
     if mode == "rising":
-        rising_edges = np.where(diff == threshold)[0]
+        edges = np.where(diff == threshold)[0]
     elif mode == "falling":
-        rising_edges = np.where(diff == -threshold)[0]
-    return rising_edges
+        edges = np.where(diff == -threshold)[0]
+    else:
+        raise ValueError('mode must be either "rising" or "falling"')
+    return edges
 
-def convert_timestamp(date_str):
-    if len(str(date_str).split(".")) > 2:
+def convert_timestamp(date_str: Union[str, float]) -> Union[float, str]:
+    """
+    Convert a timestamp string to a UNIX timestamp or vice versa.
+
+    Parameters
+    ----------
+    date_str : str or float
+        The date string or UNIX timestamp.
+
+    Returns
+    -------
+    float or str
+        The converted timestamp.
+    """
+    date_str = str(date_str)
+    if len(date_str.split(".")) > 2:
         timestamp = datetime.strptime(date_str, "%Y.%m.%d. %H:%M:%S.%f")
         return timestamp.timestamp()
     else:
         date_time = datetime.fromtimestamp(float(date_str))
         return date_time.strftime("%Y.%m.%d. %H:%M:%S.%f")
-    
-def generate_DF(file_path, output_path):
-    
-    """   Converts raw ISO data from a .txt file into a cleaned DataFrame and saves it as a .csv file.
-
-
-    Args:
-        file_path (str): The path to the input .txt file containing raw ISO data.
-        output_path (str): The path to save the cleaned data as a .csv file.
-
-    Returns:
-        pandas.DataFrame: A cleaned DataFrame containing the following columns:
-            - "Torque": Numeric values from the torque column.
-            - "Angle": Numeric values from the angle column.
-            - "Velocity": Numeric values from the velocity column.
+        
+def generate_DF(file_path: str, output_path: str) -> pd.DataFrame:
     """
-    
+    Convert raw ISO data from a .txt file( which are messy) into a cleaned DataFrame and save it as a .csv file.
+
+    The function reads a tab-delimited file containing columns for torque, angle, and velocity,
+    cleans the data by replacing commas with periods and coercing numeric types, and then saves the cleaned
+    data to a CSV file.
+
+    Parameters
+    ----------
+    file_path : str
+        Path to the input .txt file containing raw ISO data.
+    output_path : str
+        Path where the cleaned data CSV file will be saved.
+
+    Returns
+    -------
+    pd.DataFrame
+        A cleaned DataFrame with columns "Torque", "Angle", and "Velocity".
+    """
     iso_data = pd.read_csv(file_path, delimiter="\t", header=0)
 
-    #extract the first column (Torque)
-    torque_column = iso_data["Torque (or Velocity - ISOT, or Force - CKC)"]
-    torque_column = torque_column.str.replace(',', '.', regex=False)
-    torque_column_cleaned = pd.to_numeric(torque_column, errors='coerce').dropna()
+    # Clean and convert the "Torque" column.
+    torque_str = iso_data["Torque (or Velocity - ISOT, or Force - CKC)"].str.replace(",", ".", regex=False)
+    torque_clean = pd.to_numeric(torque_str, errors="coerce").dropna()
 
-    #extract the second column (Angle)
-    angle_column = iso_data["Angle (or Distance - CKC)"]
-    angle_column = angle_column.str.replace(',', '.', regex=False)
-    angle_column_cleaned = pd.to_numeric(angle_column, errors='coerce').dropna()
+    # Clean and convert the "Angle" column.
+    angle_str = iso_data["Angle (or Distance - CKC)"].str.replace(",", ".", regex=False)
+    angle_clean = pd.to_numeric(angle_str, errors="coerce").dropna()
 
-    #extract the third column (Velocity)
-    speed_column = iso_data["Velocity (or Torque - ISOT, or Force - CKC)"]
-    speed_column = speed_column.str.replace(',', '.', regex=False)
-    speed_column_cleaned = pd.to_numeric(speed_column, errors='coerce').dropna()
-    
+    # Clean and convert the "Velocity" column.
+    velocity_str = iso_data["Velocity (or Torque - ISOT, or Force - CKC)"].str.replace(",", ".", regex=False)
+    velocity_clean = pd.to_numeric(velocity_str, errors="coerce").dropna()
+
     iso_raw_df = pd.DataFrame({
-        "Torque": torque_column_cleaned,
-        "Angle": angle_column_cleaned,
-        "Velocity": speed_column_cleaned
+        "Torque": torque_clean,
+        "Angle": angle_clean,
+        "Velocity": velocity_clean
     })
 
-    # saved the cleaned data
     iso_raw_df.to_csv(output_path, index=False)
-
-    print(f"cleaned data saved to {output_path}")
+    print(f"Cleaned data saved to {output_path}")
 
     return iso_raw_df
 
@@ -133,335 +181,384 @@ def generate_DF(file_path, output_path):
 class IsoForceRAW:
 
     """
-        Post process the Isoforcekinetic data from Original device
+    Post-process IsoForce kinetic data acquired from the original device.
+
+    This class applies filtering, edge detection, and segmentation to the raw data.
     """
 
-    def __init__(self, DF, LP_filter=False):
+    def __init__(self, DF: pd.DataFrame, LP_filter_enabled: bool = False) -> None:
+        """
+        Initialize the IsoForceRAW processor.
+
+        Parameters
+        ----------
+        DF : pd.DataFrame
+            DataFrame containing raw "Torque", "Angle", and "Velocity" data.
+        LP_filter_enabled : bool, optional
+            Whether to apply a low-pass filter to the torque and angle data (default is False).
+        """
 
         self.DF = DF
-        self.LP_filter = LP_filter
+        self.LP_filter_enabled = LP_filter_enabled
 
         self.init_data()
         self.detect_start_stop_idxs()
         self.export_segments()
         self.filter_torque()
 
-    def init_data(self):
-        
-        # getting raw data from iso-device
+
+    def init_data(self) -> None:
+        """Extract raw data from the DataFrame and apply filtering if enabled."""
         self.torque_raw = self.DF["Torque"]
         self.angle_raw = self.DF["Angle"]
         self.speed = self.DF["Velocity"]
 
-        if self.LP_filter:
-            print("The torque and angle data are LP-filtered !")
+        if self.LP_filter_enabled:
+            print("Applying low-pass filter to torque and angle data.")
             self.torque = lowpass_filter(self.torque_raw)
-            self.angle = lowpass_filter(self.angle_raw)
+            self.angle = lowpass_filter(self.angle_raw, cutoff=2, fs=400) # fs of isoforce = 400
         else:
             self.torque = self.torque_raw
             self.angle = self.angle_raw
-       
 
-    def detect_start_stop_idxs(self):
 
-        # use the speed edges for start and stop times
+    def detect_start_stop_idxs(self) -> None:
+        """
+        Detect start and stop indices using the gradient of the speed signal.
+
+        The indices are determined based on where the speed gradient exceeds the mean
+        or is less than the negative mean. Segments shorter than 1000 samples or longer than
+        2500 samples are excluded.
+        """
         k = np.arange(len(self.speed))
         dx_dk = np.gradient(self.speed, k)
         self.start_idxs = np.where(dx_dk > np.mean(dx_dk))[0][1::2]
         self.stop_idxs = np.where(dx_dk < -np.mean(dx_dk))[0][::2]
-        # length quality check
-        too_short = np.where(self.stop_idxs - self.start_idxs < 1000)[0]  # exclude if the segment is too short lower threshold 1000
-        too_long = np.where(self.stop_idxs - self.start_idxs > 2500)[0]   # exclude if the segment is too long  upper threshold 2500
+
+        # Exclude segments that are too short (<1000 samples) or too long (>2500 samples)
+        too_short = np.where(self.stop_idxs - self.start_idxs < 1000)[0]
+        too_long = np.where(self.stop_idxs - self.start_idxs > 2500)[0]
         cut_out = np.concatenate([too_short, too_long])
-        self.stop_idxs = np.delete(self.stop_idxs, cut_out)
         self.start_idxs = np.delete(self.start_idxs, cut_out)
+        self.stop_idxs = np.delete(self.stop_idxs, cut_out)       
 
 
-    def export_segments(self):
-        idx = 0
-        T_segment_dict = dict()
-        A_segment_dict = dict()
+    def export_segments(self) -> None:
+        """
+        Export data segments based on the detected start and stop indices.
+
+        The function creates dictionaries of torque and angle segments and also builds
+        an exclusion window (a binary mask) over the full data length.
+        """
+        T_segment_dict: Dict[str, np.ndarray] = {}
+        A_segment_dict: Dict[str, np.ndarray] = {}
         exclude_window = np.zeros(len(self.speed))
-        for start, stop in zip(self.start_idxs, self.stop_idxs):
+        for idx, (start, stop) in enumerate(zip(self.start_idxs, self.stop_idxs)):
             T_segment_dict[f"T_seg_{idx}"] = self.torque[start:stop]
             A_segment_dict[f"A_seg_{idx}"] = self.angle[start:stop]
-
             exclude_window[start:stop] = 1
-            idx += 1
-
-        self.exclude_window = exclude_window
         self.torque_segments = T_segment_dict
         self.angle_segments = A_segment_dict
+        self.exclude_window = exclude_window
 
-    def filter_torque(self):
-        self.torque_seg = self.torque * self.exclude_window
+    def filter_torque(self) -> None:
+        """Apply the exclusion window to the torque signal."""
+        self.torque = self.torque * self.exclude_window
 
-    def plot_torque(self):
-        """T -> Torque"""
+
+    def plot_torque(self) -> None:
+        """Plot the filtered torque signal alongside the raw torque."""
         tks = np.round(np.linspace(np.min(self.torque), np.max(self.torque), 5))
-
         plt.figure(figsize=(12, 3))
-        plt.plot(self.torque_seg, "C0", label=".torque")
-        plt.plot(self.torque, "C8", lw=0.5, label=".torque_raw")
-        plt.grid()
+        plt.plot(self.torque, "C0", label="Filtered Torque")
+        plt.plot(self.torque_raw, "C8", lw=0.5, label="Raw Torque")
+        plt.grid(True)
         plt.legend()
-        plt.xlabel("sample $k$")
-        plt.ylabel("Torque (NM)")
+        plt.xlabel("Sample index (k)")
+        plt.ylabel("Torque (Nm)")
         plt.show()
 
-    def plot_angle(self):
-        """P -> angle"""
+    def plot_angle(self) -> None:
+        """Plot the angle signal."""
         plt.figure(figsize=(12, 3))
         plt.plot(self.angle, "C3")
-        plt.grid()
-        plt.xlabel("sample $k$")
+        plt.grid(True)
+        plt.xlabel("Sample index (k)")
         plt.ylabel("Angle (°)")
         plt.show()
 
-    def plot_speed(self):
+    def plot_speed(self) -> None:
+        """Plot the speed signal with markers for start and stop indices."""
         plt.figure(figsize=(12, 3))
-        plt.plot(self.speed, "C8")
-        plt.scatter(
-            self.start_idxs, self.speed[self.start_idxs], c="C2", label="start idx"
-        )
-        plt.scatter(
-            self.stop_idxs, self.speed[self.stop_idxs], c="C3", label="stop idxs"
-        )
-        plt.grid()
-        plt.xlabel("sample $k$")
+        plt.plot(self.speed, "C8", label="Speed")
+        plt.scatter(self.start_idxs, self.speed[self.start_idxs], c="C2", label="Start idx")
+        plt.scatter(self.stop_idxs, self.speed[self.stop_idxs], c="C3", label="Stop idx")
+        plt.grid(True)
+        plt.xlabel("Sample index (k)")
         plt.ylabel("Speed (°/s)")
         plt.legend(loc="upper left")
         plt.show()
 
-    def plot_data(self, filename=None):
+    def plot_data(self, filename: Optional[str] = None) -> None:
+        """
+        Plot torque, angle, and speed signals along with start and stop markers.
 
+        Parameters
+        ----------
+        filename : str, optional
+            If provided, the figure will be saved to this file.
+        """
         plt.figure(figsize=(12, 3))
-        plt.plot(self.torque_seg,"C0", label="Torque")
-        plt.plot(self.angle,"C3", label="Angle")
-        plt.plot(self.speed,"C8", label="Speed")
-        plt.scatter(
-            self.start_idxs, self.speed[self.start_idxs], c="C2", label="start idx"
-        )
-        plt.scatter(
-            self.stop_idxs, self.speed[self.stop_idxs], c="C4", label="stop idxs"
-        )
+        plt.plot(self.torque, "C0", label="Torque")
+        plt.plot(self.angle, "C3", label="Angle")
+        plt.plot(self.speed, "C8", label="Speed")
+        plt.scatter(self.start_idxs, self.speed[self.start_idxs], c="C2", label="Start idx")
+        plt.scatter(self.stop_idxs, self.speed[self.stop_idxs], c="C4", label="Stop idx")
+        plt.xlabel("Sample index (k)")
+        plt.grid(True)
         plt.legend(loc="upper left")
-        plt.grid()
-        plt.xlabel("sample $k$")
-        if filename != None:
+        if filename:
             plt.tight_layout()
             plt.savefig(filename)
         plt.show()
 
+
 ###############################
 # Class for processing IsoData from NI chip
 
-
-def extract_timestamp_and_sample(filename):
+def extract_timestamp_and_sample(filename: str) -> Tuple[Optional[datetime], Optional[int]]:
     """
-        extract timestamp and sample number from filename
+    Extract a timestamp and sample number from the filename.
+
+    The filename is expected to match the pattern:
+        _YYYY-MM-DD_HH-MM-SS_<sample number>.npz
+
+    Parameters
+    ----------
+    filename : str
+        The filename to parse.
+
+    Returns
+    -------
+    tuple
+        A tuple (timestamp, sample_number) where timestamp is a datetime object and sample_number is an integer.
+        Returns (None, None) if the filename does not match the expected format.
     """
     match = re.search(r"_(\d{4}-\d{2}-\d{2}_\d{2}-\d{2}-\d{2})_(\d+)\.npz$", filename)
-
     if match:
-        timestamp_str = match.group(1)  # Extract the timestamp
-        sample_number = int(match.group(2))  # Extract the sample number
-        timestamp = datetime.strptime(timestamp_str, "%Y-%m-%d_%H-%M-%S")  # Convert to datetime
-
+        timestamp_str = match.group(1)
+        sample_number = int(match.group(2))
+        timestamp = datetime.strptime(timestamp_str, "%Y-%m-%d_%H-%M-%S")
         return timestamp, sample_number
     return None, None
 
 
 
 class IsoForcePy:
-    """The class for processing the IsoForce data acquired from the Python script.
     """
-    def __init__(self, path, LP_filter=True, over_UTC=False, scale_0_1=True, speed_window_trunc=True, phase_shift=0):
-        
-        """
-        path ... part_path.isoforce_py_raw.
-        LP_filter ... low-pass filter the torque data.
-        over_UTC ... plot over the measured time stamps.
-        scale_0_1 ... scale all analog measured values between 0 and 1.
-        speed_window_trunc ... create a speed window.
-        phase_shift ... time index phase shift between Isoforce and Python (heuristic).
-        """
+    Process IsoForce data acquired from a Python script recorded by NI card.
 
+    This class loads .npz files from a specified directory, aggregates and processes the data,
+    applies filtering and scaling, and segments the signals.
+    """
+    def __init__(
+        self,
+        path: str,
+        LP_filter_enabled: bool = True,
+        over_UTC: bool = False,
+        scale_0_1: bool = True,
+        speed_window_trunc: bool = True,
+        phase_shift: int = 0,
+    ) -> None:
+        """
+        Initialize the IsoForcePy processor.
+
+        Parameters
+        ----------
+        path : str
+            Path to the directory containing raw .npz files.
+        LP_filter_enabled : bool, optional
+            Whether to low-pass filter the torque data (default is True).
+        over_UTC : bool, optional
+            Whether to plot using UTC timestamps (default is False).
+        scale_0_1 : bool, optional
+            Whether to scale all analog values between 0 and 1 (default is True).
+        speed_window_trunc : bool, optional
+            Whether to create a speed window mask (default is True).
+        phase_shift : int, optional
+            Time index phase shift between IsoForce and Python data (heuristic, default is 0).
+        """
         self.path = path
-        self.LP_filter = LP_filter
+        self.LP_filter_enabled = LP_filter_enabled
         self.over_UTC = over_UTC
         self.scale_0_1 = scale_0_1
         self.speed_window_trunc = speed_window_trunc
         self.phase_shift = phase_shift
-        
+
         self.init_data()
         self.export_segments()
         self.filter_torque()
 
-    def init_data(self):
-        # initilize lists to store aggregated data
-        angle = [] # ch1
-        torque = [] # ch2
-        speed = []  #ch3
-        time = [] #timestamps
-        time_UNIX = []
+    def init_data(self) -> None:
+        """Load and aggregate data from .npz files in the given directory."""
+        angle: List[float] = []   # Channel 1
+        torque: List[float] = []  # Channel 2
+        speed: List[float] = []   # Channel 3
+        timestamps_list: List[datetime] = []
+        timestmp_current : List[datetime] = []
 
         file_list = sorted(
             [f for f in os.listdir(self.path) if f.endswith(".npz")],
-            key=lambda f: (extract_timestamp_and_sample(f)),)
-        
-         
-        last_file_for_timestamp = dict()
+            key=lambda f: extract_timestamp_and_sample(f),
+        )
 
+        # Keep only the last file for each unique timestamp.
+        last_file_for_timestamp: Dict[datetime, str] = {}
         for file_name in file_list:
             timestamp, sample_number = extract_timestamp_and_sample(file_name)
-            last_file_for_timestamp[timestamp] = (
-                file_name  # Overwrite with the latest file
-            )
+            if timestamp is not None:
+                last_file_for_timestamp[timestamp] = file_name
 
         for timestamp, last_file in last_file_for_timestamp.items():
             file_path = os.path.join(self.path, last_file)
             data = np.load(file_path, allow_pickle=True)
-
-            # Extract the data for the last file of this timestamp
             ch_1, ch_2, ch_3 = data["data"]
-            assert len(ch_1) == len(ch_2) == len(ch_3)
+            assert len(ch_1) == len(ch_2) == len(ch_3), "Channel lengths do not match."
 
-            timestamps_start = data["timestamps_start"]
-            timestamps = data["timestamps_current"]
             sampling_rate = data["sampling_rate"]
-
-            # Expand timestamps for the last sample file
+            time_current = data["timestamps_current"]
+            # Expand timestamps for each sample.
             timestamps_expanded = [
-                timestamp + timedelta(seconds=(i / sampling_rate))
-                for i in range(len(ch_1))
+                timestamp + timedelta(seconds=(i / sampling_rate)) for i in range(len(ch_1))
             ]
 
-            # Append the torque and time data
             angle.extend(ch_1)
             torque.extend(ch_2)
             speed.extend(ch_3)
-            time.extend(timestamps_expanded)
-            #time_UNIX.extend(timestamps)
+            timestamps_list.extend(timestamps_expanded)
+            timestmp_current.extend(time_current)
 
-        #set class variables
-        self.time_UNIX = np.array(time_UNIX)
         self.angle = np.array(angle)
         self.torque_raw = np.array(torque)
-        if self.LP_filter:
+        self.speed = np.array(speed)
+
+        if self.LP_filter_enabled:
             self.torque = lowpass_filter(self.torque_raw)
         else:
             self.torque = self.torque_raw
-            
-        self.speed = np.array(speed)
 
         if self.scale_0_1:
             self.angle = scale_to_range(self.angle)
             self.torque = scale_to_range(self.torque)
             self.torque_raw = scale_to_range(self.torque_raw)
             self.speed = scale_to_range(self.speed)
-            
+
         if self.speed_window_trunc:
-            speed_window = self.speed
-            speed_window[self.speed <= 0.95] = 0
-            speed_window[self.speed > 0.5] = 1 
-            self.speed_window = speed_window           
-            
-        
-        assert len(angle) == len(torque) == len(speed)
+            speed_window = np.copy(self.speed)
+            # Create a binary mask: set values to 1 if above a threshold, else 0.
+            speed_window[speed_window <= 0.95] = 0
+            speed_window[speed_window > 0.5] = 1
+            self.speed_window = speed_window
 
         if self.over_UTC:
-            self.time = np.array(time)
+            self.time = np.array(timestamps_list)
         else:
-            self.time = np.arange(len(time))
-    def export_segments(self, distance = 500, height=0.8):
-        idx = 0
-        T_segment_dict = dict()
-        A_segment_dict = dict()
-        
+            self.time = np.arange(len(timestamps_list))
+
+    def export_segments(self, distance: int = 500, height: float = 0.8) -> None:
+        """
+        Segment the data based on detected peaks and edges.
+
+        The stop indices are determined by finding peaks in the angle signal.
+        The start indices are determined using edge detection on the speed signal,
+        and are adjusted by the phase shift parameter.
+
+        Parameters
+        ----------
+        distance : int, optional
+            Minimum horizontal distance (in samples) between peaks (default is 500).
+        height : float, optional
+            Minimum height of peaks (default is 0.8).
+        """
+        T_segment_dict: Dict[str, np.ndarray] = {}
+        A_segment_dict: Dict[str, np.ndarray] = {}
+
         self.stop_idxs, _ = find_peaks(self.angle, distance=distance, height=height)
-        
-        start_detected = edge_detection(self.speed)
-        
-        start_filt = list()
-        
+        start_detected = edge_detection(self.speed, mode="rising")
+
+        start_filt = []
         for stop in self.stop_idxs:
-            
             diff = stop - start_detected
-            min_diff = np.argmin(diff[diff > 0])
-            start_filt.append(start_detected[min_diff])
-            
+            positive_diffs = diff[diff > 0]
+            if positive_diffs.size == 0:
+                continue
+            min_diff_idx = np.argmin(positive_diffs)
+            start_filt.append(start_detected[diff > 0][min_diff_idx])
+
         self.start_idxs = np.array(start_filt) - self.phase_shift
-        
-        # exlude all segments that are shorter than 300 samples (~3s)
-        
-        len_mask = self.stop_idxs - self.start_idxs > 300        # if fs = 100
-        self.start_idxs = self.start_idxs[len_mask]
-        self.stop_idxs = self.stop_idxs[len_mask]
-        
-        assert(
-            self.start_idxs.shape == self.stop_idxs.shape) , "start_idxs and stop_idxs are not the same"
-        
+
+        # Exclude segments shorter than 120 samples (~3 seconds at fs=120).
+        valid_mask = (self.stop_idxs - self.start_idxs) > 120
+        self.start_idxs = self.start_idxs[valid_mask]
+        self.stop_idxs = self.stop_idxs[valid_mask]
+
+        assert self.start_idxs.shape == self.stop_idxs.shape, "start_idxs and stop_idxs do not match."
+
         exclude_window = np.zeros(len(self.torque))
-        for start, stop in zip(self.start_idxs, self.stop_idxs):
+        for idx, (start, stop) in enumerate(zip(self.start_idxs, self.stop_idxs)):
             T_segment_dict[f"T_seg_{idx}"] = self.torque[start:stop]
             A_segment_dict[f"A_seg_{idx}"] = self.angle[start:stop]
             exclude_window[start:stop] = 1
-            idx += 1
-        
+
         self.torque_segments = T_segment_dict
         self.angle_segments = A_segment_dict
-        self.exclude_window = exclude_window
+        self.exclude_window = exclude_window   
+   
         
-    def filter_torque(self):
+    def filter_torque(self) -> None:
+        """Apply the exclusion window to the torque signal."""
         self.torque = self.torque * self.exclude_window
     
     
-    def plot_angle(self):
-        
+    def plot_angle(self) -> None:
+        """Plot the angle signal."""
         plt.figure(figsize=(12, 3))
-        if self.over_UTC:
-            plt.plot(self.time, self.angle, label="Angle", color="C3")
-            plt.xlabel("Time (UTC)")
-        else:
-            plt.plot(self.time, self.angle, label="Angle", color="C3")
-            plt.xlabel("sample ($k$)")
-
+        plt.plot(self.time, self.angle, label="Angle", color="C3")
+        plt.xlabel("Time (UTC)" if self.over_UTC else "Sample index (k)")
         plt.ylabel("Angle")
         plt.grid(True)
         plt.legend(loc="upper left")
         plt.tight_layout()
         plt.show()
-    
-    def plot_torque(self):
-        plt.figure(figsize=(12, 3))
-        
-        if self.over_UTC:
-            plt.plot(self.time, self.torque, "C0", label=".torque")
-            plt.plot(self.time, self.torque_raw, "C5", lw=0.5, label=".torque_raw")
-            plt.xlabel("Time (UTC)")
-        else:
-            
-            plt.plot(self.time, self.torque, "C0", label=".torque")
-            plt.plot(self.time, self.torque_raw, "C5", lw=0.5, label=".torque_raw") 
-            plt.xlabel("sample ($k$)")
 
+    def plot_torque(self) -> None:
+        """Plot the torque signals (filtered and raw)."""
+        plt.figure(figsize=(12, 3))
+        plt.plot(
+            self.time,
+            self.torque,
+            "C0",
+            label="Filtered Torque"
+        )
+        plt.plot(
+            self.time,
+            self.torque_raw,
+            "C5",
+            lw=0.5,
+            label="Raw Torque"
+        )
+        plt.xlabel("Time (UTC)" if self.over_UTC else "Sample index (k)")
         plt.ylabel("Torque (Nm)")
         plt.grid(True)
         plt.legend(loc="upper left")
         plt.tight_layout()
         plt.show()
 
-    def plot_speed(self):
+    def plot_speed(self) -> None:
+        """Plot the speed signal."""
         plt.figure(figsize=(12, 3))
-        if self.over_UTC:
-            plt.plot(self.time, self.speed, label="Speed", color="C8")
-            plt.xlabel("Time (UTC)")
-
-        else:
-            plt.plot(self.time, self.speed, label="Speed", color="C8")
-            plt.xlabel("sample ($k$)")
-            
+        plt.plot(self.time, self.speed, label="Speed", color="C8")
+        plt.xlabel("Time (UTC)" if self.over_UTC else "Sample index (k)")
         plt.ylabel("Speed (°/s)")
         plt.grid(True)
         plt.legend(loc="upper left")
