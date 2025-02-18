@@ -81,6 +81,7 @@ def scale_to_range(
         return type(values)(scaled.tolist())
     return scaled
 
+
 def edge_detection(signal: Union[np.ndarray, List[float]], mode: str = "rising", threshold: float = 1.0) -> np.ndarray:
     """
     Detect edges (rising or falling) in a signal based on a specified threshold.
@@ -369,6 +370,7 @@ class IsoForcePy:
         scale_0_1: bool = True,
         speed_window_trunc: bool = True,
         phase_shift: int = 0,
+        distance: int = 500,
     ) -> None:
         """
         Initialize the IsoForcePy processor.
@@ -396,7 +398,7 @@ class IsoForcePy:
         self.phase_shift = phase_shift
 
         self.init_data()
-        self.export_segments()
+        self.export_segments(distance=distance)
         self.filter_torque()
 
     def init_data(self) -> None:
@@ -484,7 +486,7 @@ class IsoForcePy:
         A_segment_dict: Dict[str, np.ndarray] = {}
 
         self.stop_idxs, _ = find_peaks(self.angle, distance=distance, height=height)
-        start_detected = edge_detection(self.speed, mode="rising")
+        start_detected = edge_detection(self.speed_window, mode="rising")
 
         start_filt = []
         for stop in self.stop_idxs:
