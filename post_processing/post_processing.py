@@ -187,7 +187,7 @@ class IsoForceRAW:
     This class applies filtering, edge detection, and segmentation to the raw data.
     """
 
-    def __init__(self, DF: pd.DataFrame, LP_filter_enabled: bool = False) -> None:
+    def __init__(self, DF: pd.DataFrame, LP_filter_enabled: bool = False, Leg: str= "right") -> None:
         """
         Initialize the IsoForceRAW processor.
 
@@ -201,7 +201,7 @@ class IsoForceRAW:
 
         self.DF = DF
         self.LP_filter_enabled = LP_filter_enabled
-
+        self.leg = Leg
         self.init_data()
         self.detect_start_stop_idxs()
         self.export_segments()
@@ -210,9 +210,14 @@ class IsoForceRAW:
 
     def init_data(self) -> None:
         """Extract raw data from the DataFrame and apply filtering if enabled."""
-        self.torque_raw = self.DF["Torque"]
-        self.angle_raw = self.DF["Angle"]
-        self.speed = self.DF["Velocity"]
+        if self.leg == "right":
+            self.torque_raw = self.DF["Torque"]
+            self.angle_raw = self.DF["Angle"]
+            self.speed = self.DF["Velocity"]
+        else:
+            self.torque_raw = -1 * self.DF["Torque"]
+            self.angle_raw = self.DF["Angle"]
+            self.speed = self.DF["Velocity"]
 
         if self.LP_filter_enabled:
             print("Applying low-pass filter to torque and angle data.")
@@ -365,6 +370,7 @@ class IsoForcePy:
     def __init__(
         self,
         path: str,
+        Leg : str = "right",
         LP_filter_enabled: bool = True,
         over_UTC: bool = False,
         scale_0_1: bool = True,
@@ -379,6 +385,8 @@ class IsoForcePy:
         ----------
         path : str
             Path to the directory containing raw .npz files.
+        Leg : str
+            Leg of test subjects
         LP_filter_enabled : bool, optional
             Whether to low-pass filter the torque data (default is True).
         over_UTC : bool, optional
@@ -391,6 +399,7 @@ class IsoForcePy:
             Time index phase shift between IsoForce and Python data (heuristic, default is 0).
         """
         self.path = path
+        self.Leg = Leg
         self.LP_filter_enabled = LP_filter_enabled
         self.over_UTC = over_UTC
         self.scale_0_1 = scale_0_1
@@ -440,9 +449,15 @@ class IsoForcePy:
             timestamps_list.extend(timestamps_expanded)
             timestmp_current.extend(time_current)
 
-        self.angle = np.array(angle)
-        self.torque_raw = np.array(torque)
-        self.speed = np.array(speed)
+        if self.Leg == "right":
+            self.angle = np.array(angle)
+            self.torque_raw = np.array(torque)
+            self.speed = np.array(speed)
+        else:
+            self.angle = -1 * np.array(angle)
+            self.torque_raw = -1 * np.array(torque)
+            self.speed = -1 * np.array(speed)
+
 
         if self.LP_filter_enabled:
             self.torque = lowpass_filter(self.torque_raw)
@@ -460,6 +475,10 @@ class IsoForcePy:
             # Create a binary mask: set values to 1 if above a threshold, else 0.
             speed_window[speed_window <= 0.95] = 0
             speed_window[speed_window > 0.5] = 1
+
+            # Add a few zeros at the beginning
+            num_zeros = 10  
+            speed_window = np.concatenate((np.zeros(num_zeros), speed_window))
             self.speed_window = speed_window
 
         if self.over_UTC:
@@ -467,7 +486,7 @@ class IsoForcePy:
         else:
             self.time = np.arange(len(timestamps_list))
 
-    def export_segments(self, distance: int = 500, height: float = 0.8) -> None:
+    def export_segments(self, distance: int = 500, height: float = 0.7) -> None:
         """
         Segment the data based on detected peaks and edges.
 
@@ -480,14 +499,24 @@ class IsoForcePy:
         distance : int, optional
             Minimum horizontal distance (in samples) between peaks (default is 500).
         height : float, optional
-            Minimum height of peaks (default is 0.8).
+            Minimum height of peaks (default is 0.7).
         """
         T_segment_dict: Dict[str, np.ndarray] = {}
         A_segment_dict: Dict[str, np.ndarray] = {}
 
-        self.stop_idxs, _ = find_peaks(self.angle, distance=distance, height=height)
+        self.stop_idxs, _ = find_peaks(self.angle, distance=distance, height=height) # for tst remove 1 element
+        #self.stop_idxs = self.stop_idxs[1:]  # -> for those that we dont have the first segment
+        ##########
         start_detected = edge_detection(self.speed_window, mode="rising")
+        
+        # Compute differences between consecutive indices
+        diffs = np.diff(start_detected)
 
+        # Keep the first index and then only those where the difference is > 400
+        valid_indices = np.insert(np.where(diffs > 400)[0] + 1, 0, 0)
+
+        # Filtered start indices
+        start_detected = start_detected[valid_indices]
         start_filt = []
         for stop in self.stop_idxs:
             diff = stop - start_detected
@@ -499,8 +528,8 @@ class IsoForcePy:
 
         self.start_idxs = np.array(start_filt) - self.phase_shift
 
-        # Exclude segments shorter than 120 samples (~3 seconds at fs=120).
-        valid_mask = (self.stop_idxs - self.start_idxs) > 120
+        # Exclude segments shorter than 300 samples (~3 seconds at fs=300).
+        valid_mask = (self.stop_idxs - self.start_idxs) > 300
         self.start_idxs = self.start_idxs[valid_mask]
         self.stop_idxs = self.stop_idxs[valid_mask]
 
@@ -559,7 +588,9 @@ class IsoForcePy:
     def plot_speed(self) -> None:
         """Plot the speed signal."""
         plt.figure(figsize=(12, 3))
-        plt.plot(self.time, self.speed, label="Speed", color="C8")
+        plt.plot(self.speed_window, label="Speed", color="C8")
+
+        #plt.plot(self.time, self.speed_window, label="Speed", color="C8")
         plt.xlabel("Time (UTC)" if self.over_UTC else "Sample index (k)")
         plt.ylabel("Speed (°/s)")
         plt.grid(True)
