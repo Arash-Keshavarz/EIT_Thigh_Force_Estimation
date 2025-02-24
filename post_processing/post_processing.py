@@ -15,7 +15,35 @@ from typing import Any, List, Tuple, Union, Dict, Optional
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
-from scipy.signal import butter, filtfilt, find_peaks
+from scipy.signal import butter, filtfilt, find_peaks, resample
+
+def resample_signals(iso_iso, iso_py, target_length=None):
+    iso_iso = np.asarray(iso_iso)
+    iso_py = np.asarray(iso_py)
+    if target_length:
+        print(f"Resample both signals to a length of {target_length} samples.")
+        iso_py = resample(iso_py, num=target_length)
+        iso_iso = resample(iso_iso, num=target_length)
+        return iso_iso, iso_py
+    else:
+        target_length = max(len(iso_iso), len(iso_py))
+        print(f"Resample both signals to a length of {target_length} samples.")
+        if len(iso_iso) > len(iso_py):
+            iso_py = resample(iso_py, num=target_length)
+        elif len(iso_py) > len(iso_iso):
+            iso_iso = resample(iso_iso, num=target_length)
+        return iso_iso, iso_py
+
+
+def detect_shift(signal1, signal2):
+    N = max(len(signal1), len(signal2))
+    corr = np.correlate(signal1, signal2, mode="full")
+    lags = np.arange(-N + 1, N)
+
+    max_corr_idx = np.argmax(corr)
+    discrete_time_shift = lags[max_corr_idx]
+    print(f"Discrete time shift of {discrete_time_shift}.")
+    return discrete_time_shift
 
 def lowpass_filter(
     data: Union[np.ndarray, List[float]], cutoff: float = 2.0, fs: float = 100.0, order: int = 4
