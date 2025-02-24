@@ -1,4 +1,4 @@
-# EIT_Thigh_Force_Measurement
+# EIT_Thigh_Force_Estimation
 
 This repository contains data and code for an experimental study measuring Electrical Impedance Tomography (EIT) data to assess thigh strength and force levels. The goal is to process and analyze the collected data for solving a regression and classification problem in the force range of 20–80 Nm across different participants.
 
