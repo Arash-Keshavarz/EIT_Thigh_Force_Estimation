@@ -1,14 +1,18 @@
-
 import os
 import numpy as np
 from dataclasses import dataclass
 from datetime import datetime
 from glob import glob
+from os.path import join
+
+from .class_util import Protocol
+
 
 @dataclass
 class SingleEitFrame:
     setup_name: str = ""
     f_scale: str = ""
+
 
 header_keys = [
     "number_of_header",
@@ -31,6 +35,7 @@ header_keys = [
     "MeasurementChannelsIndependentFromInjectionPattern",
 ]
 
+
 def list_eit_files(path: str) -> list:
     """
     Returns a list of all .eit files in the directory path.
@@ -47,10 +52,11 @@ def list_eit_files(path: str) -> list:
     """
     try:
         src_list = [_ for _ in os.listdir(path) if _.endswith(".eit")]
-        return src_list
+        return np.sort(src_list)
     except Exception as e:
         print(f"Error listing .eit files in directory: {path}. Error: {e}")
         return []
+
 
 def doteit_in_SingleEitFrame(read_content: list) -> SingleEitFrame:
     """
@@ -71,7 +77,7 @@ def doteit_in_SingleEitFrame(read_content: list) -> SingleEitFrame:
     # Populate frame with header information
     for content, key in zip(read_content, header_keys):
         setattr(frame, key, content)
-    
+
     frame.f_scale = "linear" if frame.f_scale == "0" else "logarithmic"
 
     # Populate frame with data
@@ -85,10 +91,42 @@ def doteit_in_SingleEitFrame(read_content: list) -> SingleEitFrame:
         for idx, cmpl in enumerate(range(0, len(lct), 2)):
             fin_val[idx] = complex(lct[cmpl], lct[cmpl + 1])
         setattr(frame, el_cmb, np.array(fin_val))
-    
+
     return frame
 
-def convert_fulldir_doteit_to_npz(lpath: str, spath: str) -> None:
+
+def process_eit_files(tar_path, skip=5, n_el=16):
+    """
+    Process EIT files in the given directory, adjusts electrode pairings, and saves updated data.
+
+    Parameters:
+    - tar_path (str): Path to the directory containing the .npz files.
+    - skip (int): Number of electrodes to skip in pairing. Default is 5.
+    - n_el (int): Total number of electrodes. Default is 16.
+
+    Returns:
+    - None
+    """
+
+    for ele in glob(f"{tar_path}/*.npz"):
+        tmp_eit = np.load(ele, allow_pickle=True)
+
+        els = np.arange(1, n_el + 1)
+        mat = np.zeros((n_el, n_el), dtype=complex)
+
+        for i1, i2 in zip(els, np.roll(els, -(skip + 1))):
+            mat[i1 - 1, :n_el] = tmp_eit[f"{i1}_{i2}"][:n_el]
+
+        np.savez(
+            ele,
+            eit=mat,
+            timestamp=convert_timestamp(tmp_eit["date_time"].tolist()),
+        )
+
+
+def convert_fulldir_doteit_to_npz(
+    lpath: str, protocol: Protocol, spath: str = None
+) -> None:
     """
     Converts all .eit files in a directory to .npz files in a directory spath.
 
@@ -103,24 +141,33 @@ def convert_fulldir_doteit_to_npz(lpath: str, spath: str) -> None:
     -------
     None
     """
+    if spath == None:
+        spath = join(lpath, "eit_npz")
+
     os.makedirs(spath, exist_ok=True)  # Ensure the save path exists
 
-    objects = list_eit_files(lpath)
-    if not objects:
+    file_path = join(glob(lpath + "eit_raw/2025*")[0], "setup/")
+    objects = list_eit_files(file_path)
+    if len(objects) == 0:
         print(f"No .eit files found in directory: {lpath}")
         return
-
+    print("Convert .eit to .npz.")
     for obj in objects:
-        fname = os.path.join(lpath, obj)
+        fname = os.path.join(file_path, obj)
         with open(fname, "r") as file:
             read_content = file.read().split("\n")
 
         frame = doteit_in_SingleEitFrame(read_content)
         save_path = os.path.join(spath, f"{frame.setup_name}.npz")
         np.savez(save_path, **(frame.__dict__))
-        print(f"Saved: {save_path}")
+        # print(f"Saved: {save_path}")
 
-
+    print("Reshape .npz data.")
+    process_eit_files(
+        tar_path=spath,
+        skip=protocol.EITmeasurement.injection_skip,
+        n_el=protocol.EITmeasurement.n_el,
+    )
 
 
 def convert_timestamp(date_str):
@@ -130,34 +177,3 @@ def convert_timestamp(date_str):
     else:
         date_time = datetime.fromtimestamp(float(date_str))
         return date_time.strftime("%Y.%m.%d. %H:%M:%S.%f")
-    
-
-
-def process_eit_files(tar_path, skip=5, n_el=16):
-
-    """
-    Process EIT files in the given directory, adjusts electrode pairings, and saves updated data.
-    
-    Parameters:
-    - tar_path (str): Path to the directory containing the .npz files.
-    - skip (int): Number of electrodes to skip in pairing. Default is 5.
-    - n_el (int): Total number of electrodes. Default is 16.
-
-    Returns:
-    - None
-    """
-
-    for ele in glob(f"{tar_path}/*.npz"):
-        tmp_eit = np.load(ele, allow_pickle= True)
-
-        els = np.arange(1, n_el+1)
-        mat = np.zeros((n_el, n_el), dtype=complex)
-
-        for i1, i2 in zip(els, np.roll(els, -(skip+1))):
-            mat[i1 - 1, :n_el] = tmp_eit[f"{i1}_{i2}"][:n_el]
-
-        np.savez(
-        ele,
-        eit=mat,
-        timestamp=convert_timestamp(tmp_eit["date_time"].tolist()),
-    )

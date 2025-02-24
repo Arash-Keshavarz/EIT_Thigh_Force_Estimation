@@ -1,5 +1,5 @@
 """
-post_processing.py
+processing.py
 ------------------
 
 This module provides functions and classes to post‐process IsoForce and IsoForcePy data.
@@ -8,17 +8,25 @@ as well as classes to wrap these operations for specific data formats.
 """
 
 import os
+from os.path import join
 import re
+from glob import glob
 from datetime import datetime, timedelta
 from typing import Any, List, Tuple, Union, Dict, Optional
+
+from .class_util import Protocol
 
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 from scipy.signal import butter, filtfilt, find_peaks
 
+
 def lowpass_filter(
-    data: Union[np.ndarray, List[float]], cutoff: float = 2.0, fs: float = 100.0, order: int = 4
+    data: Union[np.ndarray, List[float]],
+    cutoff: float = 2.0,
+    fs: float = 100.0,
+    order: int = 4,
 ) -> np.ndarray:
     """
     Apply a low-pass Butterworth filter to the input signal.
@@ -45,8 +53,11 @@ def lowpass_filter(
     filtered_signal = filtfilt(b, a, np.asarray(data))
     return filtered_signal
 
+
 def scale_to_range(
-    values: Union[np.ndarray, List[float], Tuple[float, ...]], new_min: float = 0.0, new_max: float = 1.0
+    values: Union[np.ndarray, List[float], Tuple[float, ...]],
+    new_min: float = 0.0,
+    new_max: float = 1.0,
 ) -> Union[np.ndarray, List[float], Tuple[float, ...]]:
     """
     Scale input value(s) from their original range to a new specified range [new_min, new_max].
@@ -74,7 +85,9 @@ def scale_to_range(
     if old_max == old_min:
         scaled = np.full_like(values_arr, new_min)
     else:
-        scaled = new_min + (values_arr - old_min) * (new_max - new_min) / (old_max - old_min)
+        scaled = new_min + (values_arr - old_min) * (new_max - new_min) / (
+            old_max - old_min
+        )
 
     # Return the same type as the input if possible.
     if isinstance(values, (list, tuple)):
@@ -82,7 +95,9 @@ def scale_to_range(
     return scaled
 
 
-def edge_detection(signal: Union[np.ndarray, List[float]], mode: str = "rising", threshold: float = 1.0) -> np.ndarray:
+def edge_detection(
+    signal: Union[np.ndarray, List[float]], mode: str = "rising", threshold: float = 1.0
+) -> np.ndarray:
     """
     Detect edges (rising or falling) in a signal based on a specified threshold.
 
@@ -111,6 +126,7 @@ def edge_detection(signal: Union[np.ndarray, List[float]], mode: str = "rising",
         raise ValueError('mode must be either "rising" or "falling"')
     return edges
 
+
 def convert_timestamp(date_str: Union[str, float]) -> Union[float, str]:
     """
     Convert a timestamp string to a UNIX timestamp or vice versa.
@@ -132,8 +148,9 @@ def convert_timestamp(date_str: Union[str, float]) -> Union[float, str]:
     else:
         date_time = datetime.fromtimestamp(float(date_str))
         return date_time.strftime("%Y.%m.%d. %H:%M:%S.%f")
-        
-def generate_DF(file_path: str, output_path: str) -> pd.DataFrame:
+
+
+def generate_DF(file_path: str, output_path: str = None) -> pd.DataFrame:
     """
     Convert raw ISO data from a .txt file( which are messy) into a cleaned DataFrame and save it as a .csv file.
 
@@ -144,19 +161,22 @@ def generate_DF(file_path: str, output_path: str) -> pd.DataFrame:
     Parameters
     ----------
     file_path : str
-        Path to the input .txt file containing raw ISO data.
-    output_path : str
-        Path where the cleaned data CSV file will be saved.
+        Path to the participant directory containing raw ISO data.
+    output_path : str, optional
+        Path where the cleaned data CSV file will be saved(default is None)..
 
     Returns
     -------
     pd.DataFrame
         A cleaned DataFrame with columns "Torque", "Angle", and "Velocity".
     """
-    iso_data = pd.read_csv(file_path, delimiter="\t", header=0)
+    file_path_txt = glob(join(file_path, "*.txt"))[0]
+    iso_data = pd.read_csv(file_path_txt, delimiter="\t", header=0)
 
     # Clean and convert the "Torque" column.
-    torque_str = iso_data["Torque (or Velocity - ISOT, or Force - CKC)"].str.replace(",", ".", regex=False)
+    torque_str = iso_data["Torque (or Velocity - ISOT, or Force - CKC)"].str.replace(
+        ",", ".", regex=False
+    )
     torque_clean = pd.to_numeric(torque_str, errors="coerce").dropna()
 
     # Clean and convert the "Angle" column.
@@ -164,30 +184,34 @@ def generate_DF(file_path: str, output_path: str) -> pd.DataFrame:
     angle_clean = pd.to_numeric(angle_str, errors="coerce").dropna()
 
     # Clean and convert the "Velocity" column.
-    velocity_str = iso_data["Velocity (or Torque - ISOT, or Force - CKC)"].str.replace(",", ".", regex=False)
+    velocity_str = iso_data["Velocity (or Torque - ISOT, or Force - CKC)"].str.replace(
+        ",", ".", regex=False
+    )
     velocity_clean = pd.to_numeric(velocity_str, errors="coerce").dropna()
 
-    iso_raw_df = pd.DataFrame({
-        "Torque": torque_clean,
-        "Angle": angle_clean,
-        "Velocity": velocity_clean
-    })
-
-    iso_raw_df.to_csv(output_path, index=False)
+    iso_raw_df = pd.DataFrame(
+        {"Torque": torque_clean, "Angle": angle_clean, "Velocity": velocity_clean}
+    )
+    if output_path != None:
+        iso_raw_df.to_csv(output_path, index=False)
+    else:
+        output_path = join(file_path, "iso_raw_data.csv")
+        iso_raw_df.to_csv(output_path, index=False)
     print(f"Cleaned data saved to {output_path}")
 
     return iso_raw_df
 
 
 class IsoForceRAW:
-
     """
     Post-process IsoForce kinetic data acquired from the original device.
 
     This class applies filtering, edge detection, and segmentation to the raw data.
     """
 
-    def __init__(self, DF: pd.DataFrame, LP_filter_enabled: bool = False, Leg: str= "right") -> None:
+    def __init__(
+        self, DF: pd.DataFrame, protocol: Protocol, LP_filter_enabled: bool = False
+    ) -> None:
         """
         Initialize the IsoForceRAW processor.
 
@@ -195,26 +219,27 @@ class IsoForceRAW:
         ----------
         DF : pd.DataFrame
             DataFrame containing raw "Torque", "Angle", and "Velocity" data.
+        protocol : Protocol
+            Protocol class with the information of the .json.
         LP_filter_enabled : bool, optional
             Whether to apply a low-pass filter to the torque and angle data (default is False).
         """
 
         self.DF = DF
         self.LP_filter_enabled = LP_filter_enabled
-        self.leg = Leg
+        self.protocol = protocol
         self.init_data()
         self.detect_start_stop_idxs()
         self.export_segments()
         self.filter_torque()
 
-
     def init_data(self) -> None:
         """Extract raw data from the DataFrame and apply filtering if enabled."""
-        if self.leg == "right":
+        if self.protocol.Participant.leg == "right":
             self.torque_raw = self.DF["Torque"]
             self.angle_raw = self.DF["Angle"]
             self.speed = self.DF["Velocity"]
-        else:
+        elif self.protocol.Participant.leg == "left":
             self.torque_raw = -1 * self.DF["Torque"]
             self.angle_raw = self.DF["Angle"]
             self.speed = self.DF["Velocity"]
@@ -222,11 +247,12 @@ class IsoForceRAW:
         if self.LP_filter_enabled:
             print("Applying low-pass filter to torque and angle data.")
             self.torque = lowpass_filter(self.torque_raw)
-            self.angle = lowpass_filter(self.angle_raw, cutoff=2, fs=400) # fs of isoforce = 400
+            self.angle = lowpass_filter(
+                self.angle_raw, cutoff=2, fs=400
+            )  # fs of isoforce = 400
         else:
             self.torque = self.torque_raw
             self.angle = self.angle_raw
-
 
     def detect_start_stop_idxs(self) -> None:
         """
@@ -246,8 +272,7 @@ class IsoForceRAW:
         too_long = np.where(self.stop_idxs - self.start_idxs > 2500)[0]
         cut_out = np.concatenate([too_short, too_long])
         self.start_idxs = np.delete(self.start_idxs, cut_out)
-        self.stop_idxs = np.delete(self.stop_idxs, cut_out)       
-
+        self.stop_idxs = np.delete(self.stop_idxs, cut_out)
 
     def export_segments(self) -> None:
         """
@@ -270,7 +295,6 @@ class IsoForceRAW:
     def filter_torque(self) -> None:
         """Apply the exclusion window to the torque signal."""
         self.torque = self.torque * self.exclude_window
-
 
     def plot_torque(self) -> None:
         """Plot the filtered torque signal alongside the raw torque."""
@@ -297,8 +321,12 @@ class IsoForceRAW:
         """Plot the speed signal with markers for start and stop indices."""
         plt.figure(figsize=(12, 3))
         plt.plot(self.speed, "C8", label="Speed")
-        plt.scatter(self.start_idxs, self.speed[self.start_idxs], c="C2", label="Start idx")
-        plt.scatter(self.stop_idxs, self.speed[self.stop_idxs], c="C3", label="Stop idx")
+        plt.scatter(
+            self.start_idxs, self.speed[self.start_idxs], c="C2", label="Start idx"
+        )
+        plt.scatter(
+            self.stop_idxs, self.speed[self.stop_idxs], c="C3", label="Stop idx"
+        )
         plt.grid(True)
         plt.xlabel("Sample index (k)")
         plt.ylabel("Speed (°/s)")
@@ -318,8 +346,12 @@ class IsoForceRAW:
         plt.plot(self.torque, "C0", label="Torque")
         plt.plot(self.angle, "C3", label="Angle")
         plt.plot(self.speed, "C8", label="Speed")
-        plt.scatter(self.start_idxs, self.speed[self.start_idxs], c="C2", label="Start idx")
-        plt.scatter(self.stop_idxs, self.speed[self.stop_idxs], c="C4", label="Stop idx")
+        plt.scatter(
+            self.start_idxs, self.speed[self.start_idxs], c="C2", label="Start idx"
+        )
+        plt.scatter(
+            self.stop_idxs, self.speed[self.stop_idxs], c="C4", label="Stop idx"
+        )
         plt.xlabel("Sample index (k)")
         plt.grid(True)
         plt.legend(loc="upper left")
@@ -332,7 +364,10 @@ class IsoForceRAW:
 ###############################
 # Class for processing IsoData from NI chip
 
-def extract_timestamp_and_sample(filename: str) -> Tuple[Optional[datetime], Optional[int]]:
+
+def extract_timestamp_and_sample(
+    filename: str,
+) -> Tuple[Optional[datetime], Optional[int]]:
     """
     Extract a timestamp and sample number from the filename.
 
@@ -359,7 +394,6 @@ def extract_timestamp_and_sample(filename: str) -> Tuple[Optional[datetime], Opt
     return None, None
 
 
-
 class IsoForcePy:
     """
     Process IsoForce data acquired from a Python script recorded by NI card.
@@ -367,10 +401,11 @@ class IsoForcePy:
     This class loads .npz files from a specified directory, aggregates and processes the data,
     applies filtering and scaling, and segments the signals.
     """
+
     def __init__(
         self,
         path: str,
-        Leg : str = "right",
+        protocol: Protocol,
         LP_filter_enabled: bool = True,
         over_UTC: bool = False,
         scale_0_1: bool = True,
@@ -385,8 +420,8 @@ class IsoForcePy:
         ----------
         path : str
             Path to the directory containing raw .npz files.
-        Leg : str
-            Leg of test subjects
+        protocol : Protocol
+            For reading the leg information.
         LP_filter_enabled : bool, optional
             Whether to low-pass filter the torque data (default is True).
         over_UTC : bool, optional
@@ -398,8 +433,8 @@ class IsoForcePy:
         phase_shift : int, optional
             Time index phase shift between IsoForce and Python data (heuristic, default is 0).
         """
-        self.path = path
-        self.Leg = Leg
+        self.path = join(path, "iso_raw")
+        self.protocol = protocol
         self.LP_filter_enabled = LP_filter_enabled
         self.over_UTC = over_UTC
         self.scale_0_1 = scale_0_1
@@ -412,11 +447,11 @@ class IsoForcePy:
 
     def init_data(self) -> None:
         """Load and aggregate data from .npz files in the given directory."""
-        angle: List[float] = []   # Channel 1
+        angle: List[float] = []  # Channel 1
         torque: List[float] = []  # Channel 2
-        speed: List[float] = []   # Channel 3
+        speed: List[float] = []  # Channel 3
         timestamps_list: List[datetime] = []
-        timestmp_current : List[datetime] = []
+        timestmp_current: List[datetime] = []
 
         file_list = sorted(
             [f for f in os.listdir(self.path) if f.endswith(".npz")],
@@ -440,7 +475,8 @@ class IsoForcePy:
             time_current = data["timestamps_current"]
             # Expand timestamps for each sample.
             timestamps_expanded = [
-                timestamp + timedelta(seconds=(i / sampling_rate)) for i in range(len(ch_1))
+                timestamp + timedelta(seconds=(i / sampling_rate))
+                for i in range(len(ch_1))
             ]
 
             angle.extend(ch_1)
@@ -449,15 +485,16 @@ class IsoForcePy:
             timestamps_list.extend(timestamps_expanded)
             timestmp_current.extend(time_current)
 
-        if self.Leg == "right":
+        self.timestmp_current = timestmp_current
+
+        if self.protocol.Participant.leg == "right":
             self.angle = np.array(angle)
             self.torque_raw = np.array(torque)
             self.speed = np.array(speed)
-        else:
+        elif self.protocol.Participant.leg == "left":
             self.angle = -1 * np.array(angle)
             self.torque_raw = -1 * np.array(torque)
             self.speed = -1 * np.array(speed)
-
 
         if self.LP_filter_enabled:
             self.torque = lowpass_filter(self.torque_raw)
@@ -477,7 +514,7 @@ class IsoForcePy:
             speed_window[speed_window > 0.5] = 1
 
             # Add a few zeros at the beginning
-            num_zeros = 10  
+            num_zeros = 10
             speed_window = np.concatenate((np.zeros(num_zeros), speed_window))
             self.speed_window = speed_window
 
@@ -504,11 +541,13 @@ class IsoForcePy:
         T_segment_dict: Dict[str, np.ndarray] = {}
         A_segment_dict: Dict[str, np.ndarray] = {}
 
-        self.stop_idxs, _ = find_peaks(self.angle, distance=distance, height=height) # for tst remove 1 element
-        #self.stop_idxs = self.stop_idxs[1:]  # -> for those that we dont have the first segment
+        self.stop_idxs, _ = find_peaks(
+            self.angle, distance=distance, height=height
+        )  # for tst remove 1 element
+        # self.stop_idxs = self.stop_idxs[1:]  # -> for those that we dont have the first segment
         ##########
         start_detected = edge_detection(self.speed_window, mode="rising")
-        
+
         # Compute differences between consecutive indices
         diffs = np.diff(start_detected)
 
@@ -533,7 +572,9 @@ class IsoForcePy:
         self.start_idxs = self.start_idxs[valid_mask]
         self.stop_idxs = self.stop_idxs[valid_mask]
 
-        assert self.start_idxs.shape == self.stop_idxs.shape, "start_idxs and stop_idxs do not match."
+        assert (
+            self.start_idxs.shape == self.stop_idxs.shape
+        ), "start_idxs and stop_idxs do not match."
 
         exclude_window = np.zeros(len(self.torque))
         for idx, (start, stop) in enumerate(zip(self.start_idxs, self.stop_idxs)):
@@ -543,14 +584,12 @@ class IsoForcePy:
 
         self.torque_segments = T_segment_dict
         self.angle_segments = A_segment_dict
-        self.exclude_window = exclude_window   
-   
-        
+        self.exclude_window = exclude_window
+
     def filter_torque(self) -> None:
         """Apply the exclusion window to the torque signal."""
         self.torque = self.torque * self.exclude_window
-    
-    
+
     def plot_angle(self) -> None:
         """Plot the angle signal."""
         plt.figure(figsize=(12, 3))
@@ -565,19 +604,8 @@ class IsoForcePy:
     def plot_torque(self) -> None:
         """Plot the torque signals (filtered and raw)."""
         plt.figure(figsize=(12, 3))
-        plt.plot(
-            self.time,
-            self.torque,
-            "C0",
-            label="Filtered Torque"
-        )
-        plt.plot(
-            self.time,
-            self.torque_raw,
-            "C5",
-            lw=0.5,
-            label="Raw Torque"
-        )
+        plt.plot(self.time, self.torque, "C0", label="Filtered Torque")
+        plt.plot(self.time, self.torque_raw, "C5", lw=0.5, label="Raw Torque")
         plt.xlabel("Time (UTC)" if self.over_UTC else "Sample index (k)")
         plt.ylabel("Torque (Nm)")
         plt.grid(True)
@@ -590,7 +618,7 @@ class IsoForcePy:
         plt.figure(figsize=(12, 3))
         plt.plot(self.speed_window, label="Speed", color="C8")
 
-        #plt.plot(self.time, self.speed_window, label="Speed", color="C8")
+        # plt.plot(self.time, self.speed_window, label="Speed", color="C8")
         plt.xlabel("Time (UTC)" if self.over_UTC else "Sample index (k)")
         plt.ylabel("Speed (°/s)")
         plt.grid(True)
