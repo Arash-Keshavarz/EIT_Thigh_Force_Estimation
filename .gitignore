@@ -2,3 +2,5 @@ __pycache__
 .DS_Store
 .ipynb_checkpoints
 Data/
+Final_Measurements/
+my_devtest.ipynb
