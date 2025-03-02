@@ -4,3 +4,5 @@ __pycache__
 Data/
 Final_Measurements/
 my_devtest.ipynb
+EIT_Thigh_Force_Estimation.egg-info
+latex_figs.ipynb

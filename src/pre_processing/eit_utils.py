@@ -6,7 +6,7 @@ from glob import glob
 from os.path import join
 import numpy as np # type: ignore
 from src.toolbox import Protocol
-
+from tqdm import tqdm
 
 sys.path.append("/Users/MA_Arash/MA_git/EIT_Thigh_Force_Estimation")
 
@@ -101,7 +101,8 @@ def process_eit_files(target_path: str, skip: int = 5, n_el: int = 16):
     -------
     None
     """
-    for filepath in glob(f"{target_path}/*.npz"):
+    filepaths = np.sort(glob(f"{target_path}/*.npz"))
+    for filepath in tqdm(filepaths, desc="Processing EIT .npz files", unit="file"):
         tmp_eit = np.load(filepath, allow_pickle=True)
 
         els = np.arange(1, n_el + 1)

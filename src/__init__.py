@@ -1,1 +1,0 @@
-print("salam src hastam")

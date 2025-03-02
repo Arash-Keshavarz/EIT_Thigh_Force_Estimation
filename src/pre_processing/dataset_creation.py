@@ -4,7 +4,7 @@ import json
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
-from post_processing import *
+from EIT_Thigh_Force_Estimation.src.pre_processing.pre_processing_utils import *
 from scipy.signal import resample
 
 

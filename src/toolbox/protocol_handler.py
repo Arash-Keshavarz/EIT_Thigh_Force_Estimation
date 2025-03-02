@@ -61,6 +61,7 @@ class Protocol:
 
             if self.verbose:
                 print(f"Loaded protocol file: {self.json_path}")
+                print(data)
 
             # Parse Participant
             self.Participant = Participant(**data.get("participant", {}))

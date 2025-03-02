@@ -8,6 +8,8 @@ as well as classes to wrap these operations for specific data formats.
 """
 
 import os
+from os.path import join
+from glob import glob 
 import re
 from datetime import datetime, timedelta
 from typing import Any, List, Tuple, Union, Dict, Optional
@@ -16,6 +18,8 @@ import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 from scipy.signal import butter, filtfilt, find_peaks, resample
+from toolbox import Protocol
+
 
 def resample_signals(iso_iso, iso_py, target_length=None):
     iso_iso = np.asarray(iso_iso)
@@ -161,7 +165,7 @@ def convert_timestamp(date_str: Union[str, float]) -> Union[float, str]:
         date_time = datetime.fromtimestamp(float(date_str))
         return date_time.strftime("%Y.%m.%d. %H:%M:%S.%f")
         
-def generate_DF(file_path: str, output_path: str) -> pd.DataFrame:
+def generate_DF(file_path: str, output_path: str = None) -> pd.DataFrame:
     """
     Convert raw ISO data from a .txt file( which are messy) into a cleaned DataFrame and save it as a .csv file.
 
@@ -181,7 +185,8 @@ def generate_DF(file_path: str, output_path: str) -> pd.DataFrame:
     pd.DataFrame
         A cleaned DataFrame with columns "Torque", "Angle", and "Velocity".
     """
-    iso_data = pd.read_csv(file_path, delimiter="\t", header=0)
+    iso_file_path = glob(join(file_path, "*.txt"))[0]
+    iso_data = pd.read_csv(iso_file_path, delimiter="\t", header=0)
 
     # Clean and convert the "Torque" column.
     torque_str = iso_data["Torque (or Velocity - ISOT, or Force - CKC)"].str.replace(",", ".", regex=False)
@@ -201,7 +206,12 @@ def generate_DF(file_path: str, output_path: str) -> pd.DataFrame:
         "Velocity": velocity_clean
     })
 
-    iso_raw_df.to_csv(output_path, index=False)
+    if output_path != None:
+        iso_raw_df.to_csv(output_path, index=False)
+    else:
+        output_path = join(file_path, "iso_raw_data.csv")
+        iso_raw_df.to_csv(output_path, index=False)
+
     print(f"Cleaned data saved to {output_path}")
 
     return iso_raw_df
@@ -215,7 +225,7 @@ class IsoForceRAW:
     This class applies filtering, edge detection, and segmentation to the raw data.
     """
 
-    def __init__(self, DF: pd.DataFrame, LP_filter_enabled: bool = False, Leg: str= "right") -> None:
+    def __init__(self, DF: pd.DataFrame, LP_filter_enabled: bool = False, Protocol: Protocol = None) -> None:
         """
         Initialize the IsoForceRAW processor.
 
@@ -229,7 +239,7 @@ class IsoForceRAW:
 
         self.DF = DF
         self.LP_filter_enabled = LP_filter_enabled
-        self.leg = Leg
+        self.leg = Protocol.Participant.leg
         self.init_data()
         self.detect_start_stop_idxs()
         self.export_segments()
@@ -398,12 +408,13 @@ class IsoForcePy:
     def __init__(
         self,
         path: str,
-        Leg : str = "right",
+        Protocol : Protocol = None,
         LP_filter_enabled: bool = True,
         over_UTC: bool = False,
         scale_0_1: bool = True,
         speed_window_trunc: bool = True,
         phase_shift: int = 0,
+        segment_len_threshold: int = 300,
         distance: int = 500,
     ) -> None:
         """
@@ -426,14 +437,17 @@ class IsoForcePy:
         phase_shift : int, optional
             Time index phase shift between IsoForce and Python data (heuristic, default is 0).
         """
-        self.path = path
-        self.Leg = Leg
+        self.path = join(path, "iso_raw")
+        self.Leg = Protocol.Participant.leg
         self.LP_filter_enabled = LP_filter_enabled
         self.over_UTC = over_UTC
         self.scale_0_1 = scale_0_1
         self.speed_window_trunc = speed_window_trunc
         self.phase_shift = phase_shift
+        self.segment_len_threshold = segment_len_threshold
 
+
+        
         self.init_data()
         self.export_segments(distance=distance)
         self.filter_torque()
@@ -489,6 +503,7 @@ class IsoForcePy:
 
         if self.LP_filter_enabled:
             self.torque = lowpass_filter(self.torque_raw)
+            self.speed = lowpass_filter(self.speed)
         else:
             self.torque = self.torque_raw
 
@@ -501,7 +516,7 @@ class IsoForcePy:
         if self.speed_window_trunc:
             speed_window = np.copy(self.speed)
             # Create a binary mask: set values to 1 if above a threshold, else 0.
-            speed_window[speed_window <= 0.95] = 0
+            speed_window[speed_window <= 0.90] = 0
             speed_window[speed_window > 0.5] = 1
 
             # Add a few zeros at the beginning
@@ -513,6 +528,8 @@ class IsoForcePy:
             self.time = np.array(timestamps_list)
         else:
             self.time = np.arange(len(timestamps_list))
+        
+        #self.timestamps = np.array([dt.timestamp() for dt in self.time])
 
     def export_segments(self, distance: int = 500, height: float = 0.7) -> None:
         """
@@ -557,7 +574,7 @@ class IsoForcePy:
         self.start_idxs = np.array(start_filt) - self.phase_shift
 
         # Exclude segments shorter than 300 samples (~3 seconds at fs=300).
-        valid_mask = (self.stop_idxs - self.start_idxs) > 300
+        valid_mask = (self.stop_idxs - self.start_idxs) > self.segment_len_threshold
         self.start_idxs = self.start_idxs[valid_mask]
         self.stop_idxs = self.stop_idxs[valid_mask]
 
