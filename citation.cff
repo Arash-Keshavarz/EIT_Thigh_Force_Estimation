@@ -1,0 +1,25 @@
+cff-version: 1.2.0
+title: >-
+  Force estimation during concentric knee extension using Electrical Impedance (EI) measurements.
+message: >-
+  If you use this repository, please cite it using the
+  metadata from this file.
+type: software
+authors:
+  - given-names: Arash
+    family-names: Keshavarz
+    email: Arash.keshavarz@uni-rostock.de
+    affiliation: Universität Rostock
+  - given-names: Jacob Peter
+    family-names: Thönes
+    email: jacob.thoenes@uni-rostock.de
+    affiliation: Universität Rostock
+
+repository-code: 'https://github.com/Arash-Keshavarz/EIT_Thigh_Force_Estimation'
+url: 'https://github.com/Arash-Keshavarz/EIT_Thigh_Force_Estimation
+keywords:
+  - EIT
+  - Force estimation
+  - Isokinetic
+license: MIT
+version: 0.8.0
