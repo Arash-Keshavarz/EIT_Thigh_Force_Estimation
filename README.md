@@ -19,7 +19,7 @@ The study is structured in two phases:
 - [Data Quality Check](#data-quality-check)
 - [Data Preprocessing and Synchronization](#data-preprocessing-and-synchronization)
 - [Dataset Generation](#dataset-generation)
-- [PCA Analysis](#pca-analysis)
+- [PCA Analysis](notebooks/3.PCA_Analysis.ipynb)
 - [Classification](#classification)
 - [Regression](#regression)
 - [Outlook](#outlook)
@@ -41,9 +41,6 @@ The study is structured in two phases:
 
 *(Coming soon.)*
 
-## PCA Analysis
-
-*(Coming soon.)*
 
 ## Classification
 
