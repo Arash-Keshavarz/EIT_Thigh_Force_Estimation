@@ -16,11 +16,11 @@ The study is structured in two phases:
 
 ## Table of Contents
 
-- [Data Quality Check](#data-quality-check)
-- [Data Preprocessing and Synchronization](#data-preprocessing-and-synchronization)
-- [Dataset Generation](#dataset-generation)
+- [Data Quality Check](notebooks/0.Data_Quality_Check.ipynb.PCA_Analysis.ipynb)
+- [Data Preprocessing and Synchronization](notebooks/1.Synchronization_Data.ipynb)
+- [Dataset Generation](notebooks/2.Dataset_generation.ipynb)
 - [PCA Analysis](notebooks/3.PCA_Analysis.ipynb)
-- [Classification](#classification)
+- [Classification](notebooks/4.Classification.ipynb)
 - [Regression](#regression)
 - [Outlook](#outlook)
 - [Installation](#installation)
