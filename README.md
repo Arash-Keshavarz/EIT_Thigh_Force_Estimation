@@ -1,3 +1,5 @@
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+[![Python 3.8+](https://img.shields.io/badge/python-3.8%2B-blue.svg)](https://www.python.org/downloads/)
 
 <h1>
   <img src="assets/logo.ico" alt="Logo" width="40" style="vertical-align: middle; margin-right: 10px;">
@@ -9,7 +11,7 @@
 Assessing muscle strength and estimating muscle force during everyday activities plays a crucial role in understanding human movement, rehabilitation, and sports science.  
 This project leverages **Electrical Impedance Tomography (EIT)** — a non-invasive imaging technique that captures the internal conductivity distribution of tissues — to explore the feasibility of **force level estimation** from EIT data.
 
-Inspired by *EITPose*[^1], which demonstrated real-time monitoring of forearm muscle activity using EIT, we extend this approach to the thigh region.  
+Inspired by [*EITPose*](https://github.com/SPICExLAB/EITPose), which demonstrated real-time monitoring of forearm muscle activity using EIT, we extend this approach to the thigh region.  
 A custom-built belt equipped with 16 electrodes was developed to record EIT data, while an Isoforce device simultaneously captured torque measurements.
 
 The study is structured in two phases:
@@ -25,7 +27,8 @@ The study is structured in two phases:
 - [Dataset Generation](notebooks/2.Dataset_generation.ipynb)
 - [PCA Analysis](notebooks/3.PCA_Analysis.ipynb)
 - [Classification](notebooks/4.Classification.ipynb)
-- [Regression](#regression)
+- [Multi-Class Classification](notebooks/5.Multi-Class_Classification.ipynb)
+- [Regression](notebooks/6.Regression.ipynb)
 - [Outlook](#outlook)
 - [Installation](#installation)
 - [Author](#author)
@@ -46,9 +49,6 @@ The study is structured in two phases:
 *(Coming soon.)*
 
 
-## Classification
-
-*(Coming soon.)*
 
 ## Regression
 
@@ -86,3 +86,9 @@ Contact: arashkeshavarzx@gmail.com
 
 - The EITPose project served as an inspiration for extending EIT applications to the thigh region.
 - Special thanks to the Institute of Communications Engineering, University of Rostock, for their support.
+
+# License
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+## Contributing
+Contributions are welcome! Please open issues or pull requests.
