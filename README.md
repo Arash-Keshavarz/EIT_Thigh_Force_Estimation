@@ -1,9 +1,8 @@
 
-<p align="left">
-  <img src="assets/logo.ico" alt="Logo" width="80"/>
-</p>
-
-# EIT Thigh Force Estimation
+<h1>
+  <img src="assets/logo.ico" alt="Logo" width="40" style="vertical-align: middle; margin-right: 10px;">
+  EIT Thigh Force Estimation
+</h1>
 
 ## Abstract
 
