@@ -3,7 +3,7 @@
   <img src="assets/logo.ico" alt="Logo" width="80"/>
 </p>
 
-# EIT Thigh Force Estimation# EIT Thigh Force Estimation
+# EIT Thigh Force Estimation
 
 ## Abstract
 
