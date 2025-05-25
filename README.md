@@ -40,7 +40,7 @@ The study is structured in two phases:
 
 The Data was acquired using the Sciospec and Isoforce devices. here the acquired data can be shown below:
 
-![Torque Data](assets/Data_Quality_Torque.pdf)
+![Torque Data](assets/Data_Quality_Torque.png)
 
 
 
@@ -58,8 +58,8 @@ the results can be seen below:
 
 Two different models were utilized : SVM and Random Forest
 
-![Classification- SVM](assets/svm_multi_fold0.pdf)
-![Classification- RF](assets/rf_multi_fold0.pdf)
+![Classification- SVM](assets/svm_multi_fold0.png)
+![Classification- RF](assets/rf_multi_fold0.png)
 
 
 ## Regression Results
