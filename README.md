@@ -64,11 +64,8 @@ Two different models were utilized : SVM and Random Forest
 
 ## Regression Results
 
-*(Coming soon.)*
-
-## Outlook
-
-*(Coming soon.)*
+Random forest was applied to predict the continuous torques:
+![Regression](assets/rf_scatter_pred_vs_true_validation%20(1).png)
 
 ---
 
