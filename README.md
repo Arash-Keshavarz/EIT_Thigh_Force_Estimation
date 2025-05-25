@@ -9,7 +9,7 @@
 ## Abstract
 
 Assessing muscle strength and estimating muscle force during everyday activities plays a crucial role in understanding human movement, rehabilitation, and sports science.  
-This project leverages **Electrical Impedance Tomography (EIT)** — a non-invasive imaging technique that captures the internal conductivity distribution of tissues — to explore the feasibility of **force level estimation** from EIT data.
+This project leverages **Electrical Impedance Tomography (EIT)**, a non-invasive imaging technique that captures the internal conductivity distribution of tissues, to explore the feasibility of **force level estimation** from EIT data.
 
 Inspired by [*EITPose*](https://github.com/SPICExLAB/EITPose), which demonstrated real-time monitoring of forearm muscle activity using EIT, we extend this approach to the thigh region.  
 A custom-built belt equipped with 16 electrodes was developed to record EIT data, while an Isoforce device simultaneously captured torque measurements.
@@ -38,33 +38,37 @@ The study is structured in two phases:
 
 ## Data Acquisition
 
-The Data was acquired using the Sciospec and Isoforce devices. here the acquired data can be shown below:
+EIT signals and torque readings were captured using Sciospec and Isoforce systems. Example torque data from two different sources for assign the timestamps shown below:
+
 
 ![Torque Data](assets/Data_Quality_Torque.png)
 
 
 
 ## Data Preprocessing and Synchronization
+Raw measurements undergo filtering, alignment, and trial extraction before model training. Overview:
+
 After acquiring the data it passed through the preprocessing pipeline before used for trainng data-driven models. The overview of this pipeline shown below:
 ![Flowchart](assets/flowchart.png)
 
-As an example for participant 5, this pipeline was applied to extract the relevant trials and remove the redundant area.
+*Example (Participant 5): Filtered torque signal*:
 
-the results can be seen below:
 
 ![Iso](assets/Iso_filtered_torque.png)
 
 ## Classification Results
 
-Two different models were utilized : SVM and Random Forest
+Two models were evaluated for multi-class force classification:
 
-![Classification- SVM](assets/svm_multi_fold0.png)
-![Classification- RF](assets/rf_multi_fold0.png)
+<p float="left">
+  <img src="assets/svm_multi_fold0.png" alt="SVM Results" width="48%" />
+  <img src="assets/rf_multi_fold0.png" alt="Random Forest Results" width="48%" />
+</p>
 
 
 ## Regression Results
 
-Random forest was applied to predict the continuous torques:
+Continuous torque estimation with Random Forest:
 ![Regression](assets/rf_scatter_pred_vs_true_validation%20(1).png)
 
 ---
