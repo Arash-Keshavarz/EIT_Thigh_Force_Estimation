@@ -36,21 +36,33 @@ The study is structured in two phases:
 
 ---
 
-## Data Quality Check
+## Data Acquisition
 
-*(Coming soon.)*
+The Data was acquired using the Sciospec and Isoforce devices. here the acquired data can be shown below:
+
+![Torque Data](assets/Data_Quality_Torque.pdf)
+
+
 
 ## Data Preprocessing and Synchronization
+After acquiring the data it passed through the preprocessing pipeline before used for trainng data-driven models. The overview of this pipeline shown below:
+![Flowchart](assets/flowchart.png)
 
-*(Coming soon.)*
+As an example for participant 5, this pipeline was applied to extract the relevant trials and remove the redundant area.
 
-## Dataset Generation
+the results can be seen below:
 
-*(Coming soon.)*
+![Iso](assets/Iso_filtered_torque.png)
+
+## Classification Results
+
+Two different models were utilized : SVM and Random Forest
+
+![Classification- SVM](assets/svm_multi_fold0.pdf)
+![Classification- RF](assets/rf_multi_fold0.pdf)
 
 
-
-## Regression
+## Regression Results
 
 *(Coming soon.)*
 
