@@ -2,7 +2,7 @@ ctkmessagebox==2.7
 customtkinter==5.2.2
 fpdf2==2.8.1
 joblib==1.4.2
-keras==3.8.0
+keras==3.13.2
 matplotlib==3.9.3
 nidaqmx==1.0.2
 numpy==1.26.4
